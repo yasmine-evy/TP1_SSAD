@@ -129,3 +129,52 @@ footer { text-align: center; color: var(--grey-400); font-size: .85rem; padding-
   header { padding: 48px 16px 36px; }
   .tab { padding: 9px 16px; }
 }
+
+/* Barres-liens (ouvrent une page dédiée) */
+a.bar-link { display: block; color: inherit; text-decoration: none; }
+a.bar-link .bar-head { cursor: pointer; }
+a.bar-link:hover .arrow { background: var(--ink); color: var(--white); }
+
+/* Pages des algorithmes */
+.retour {
+  display: inline-block; margin-bottom: 18px; color: var(--grey-600);
+  text-decoration: none; font-weight: 600; font-size: .95rem;
+  background: var(--white); padding: 2px 10px 2px 0;
+}
+.retour:hover { color: var(--ink); }
+.sous-titre { margin: 14px 0 0; color: var(--grey-600); background: rgba(255,255,255,.85); display: inline-block; }
+.bloc {
+  background: var(--white); border: 1px solid var(--grey-200);
+  border-radius: var(--radius); padding: 22px 24px; margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.bloc h2 { font-size: 1.15rem; margin: 0 0 12px; }
+.bloc p { line-height: 1.6; margin: 8px 0; }
+.exemple, .info {
+  background: var(--grey-50); border: 1px solid var(--grey-200);
+  border-radius: 8px; padding: 10px 14px; margin: 10px 0;
+  font-family: Consolas, monospace; font-size: .92rem; line-height: 1.6;
+}
+.faille { border-left: 3px solid var(--ink); padding: 6px 0 6px 14px; margin-top: 14px; color: var(--grey-600); font-size: .95rem; }
+label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: .95rem; }
+textarea, input[type="number"] {
+  font: inherit; border: 1px solid var(--grey-200); border-radius: 8px;
+  padding: 9px 12px; background: var(--white); color: var(--ink);
+}
+textarea { width: 100%; resize: vertical; }
+.matrice { display: grid; grid-template-columns: repeat(2, 80px); gap: 8px; }
+.matrice input { width: 100%; text-align: center; }
+.boutons { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.boutons button {
+  font: inherit; font-weight: 600; padding: 9px 22px; cursor: pointer;
+  border-radius: 999px; border: 1px solid var(--ink); background: var(--white); color: var(--ink);
+}
+.boutons button.principal { background: var(--ink); color: var(--white); }
+.boutons button:hover { box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.resultat {
+  margin-top: 18px; padding: 14px; border-radius: 8px; background: var(--grey-50);
+  border: 1px solid var(--grey-200); font-family: Consolas, monospace;
+  font-size: 1.15rem; letter-spacing: .12em; word-break: break-all; min-height: 52px;
+}
+.resultat:empty { display: none; }
+.resultat.erreur { letter-spacing: 0; font-family: inherit; font-size: .95rem; border-color: #c0392b; color: #c0392b; }

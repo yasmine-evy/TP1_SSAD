@@ -7,7 +7,7 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-document.querySelectorAll('.bar-head').forEach(head => {
+document.querySelectorAll('button.bar-head').forEach(head => {
   head.addEventListener('click', () => {
     const open = head.getAttribute('aria-expanded') === 'true';
     head.setAttribute('aria-expanded', String(!open));
