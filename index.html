@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Framework de chiffrement et de sécurité</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="hero">
+    <h1>Framework de chiffrement et de sécurité</h1>
+    <p class="intro">
+      Ce site regroupe les différentes parties de notre TP : les algorithmes de chiffrement
+      et de déchiffrement (César, Hill et Playfair), l'étude des mots de passe avec les attaques
+      possibles et les moyens de s'en protéger, ainsi que la vérification de l'intégrité et de
+      l'authenticité d'un message. Choisissez un onglet pour commencer.
+    </p>
+  </div>
+</header>
+
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Chiffrement</button>
+    <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Mot de passe</button>
+    <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Intégrité</button>
+  </div>
+
+  <!-- Onglet Chiffrement -->
+  <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
+    <div class="bar">
+      <button class="bar-head" aria-expanded="false">César <span class="arrow">▶</span></button>
+      <div class="bar-body"><div class="bar-inner"><div class="slot" id="caesar"></div></div></div>
+    </div>
+    <div class="bar">
+      <button class="bar-head" aria-expanded="false">Hill <span class="arrow">▶</span></button>
+      <div class="bar-body"><div class="bar-inner"><div class="slot" id="hill"></div></div></div>
+    </div>
+    <div class="bar">
+      <button class="bar-head" aria-expanded="false">Playfair <span class="arrow">▶</span></button>
+      <div class="bar-body"><div class="bar-inner"><div class="slot" id="playfair"></div></div></div>
+    </div>
+  </section>
+
+  <!-- Onglet Mot de passe -->
+  <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+    <div class="bar">
+      <button class="bar-head" aria-expanded="false">Password generator <span class="arrow">▶</span></button>
+      <div class="bar-body"><div class="bar-inner"><div class="slot" id="password-generator"></div></div></div>
+    </div>
+    <div class="bar">
+      <button class="bar-head" aria-expanded="false">Password protection <span class="arrow">▶</span></button>
+      <div class="bar-body"><div class="bar-inner"><div class="slot" id="password-protection"></div></div></div>
+    </div>
+  </section>
+
+  <!-- Onglet Intégrité -->
+  <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
+    <div class="slot" id="integrite"></div>
+  </section>
+</main>
+
+<footer>TP SSAD · USTHB · 2026-2027</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
