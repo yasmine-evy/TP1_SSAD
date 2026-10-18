@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chiffrement de César</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Ajustements spécifiques pour correspondre exactement au design souhaité */
+  .container-crypto {
+    background: var(--white);
+    border: 1px solid var(--grey-200);
+    border-radius: var(--radius);
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .row-3 {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 18px;
+  }
+  .col-algo { flex: 2; display: flex; flex-direction: column; }
+  .col-key { flex: 1; display: flex; flex-direction: column; }
+  .col-dir { flex: 1.5; display: flex; flex-direction: column; }
+  
+  .form-group-full {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+  }
+  
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
+  /* Boutons style bleu foncé et gris */
+  .btn-custom {
+    font: inherit; font-weight: 600; font-size: 14px;
+    padding: 10px 22px; cursor: pointer; border-radius: 6px; border: none;
+    color: white; transition: background .2s;
+  }
+  .btn-encrypt, .btn-decrypt { background-color: #3b5998; }
+  .btn-encrypt:hover, .btn-decrypt:hover { background-color: #2d4373; }
+  .btn-swap { background-color: #6c757d; }
+  .btn-swap:hover { background-color: #5a6268; }
+
+  input[type="text"], input[type="number"], select {
+    font: inherit; border: 1px solid #cccccc; border-radius: 6px;
+    padding: 10px 12px; background: var(--white); color: var(--ink);
+    outline: none; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: #3b5998;
+  }
+  input[readonly] {
+    background-color: #f9f9f9;
+    color: #555;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hero">
+    <a class="retour" href="index_2.html">← Retour</a><br>
+    <h1>Chiffrement de César</h1>
+    <p class="intro">Interface de chiffrement et déchiffrement avec gestion de la direction du décalage.</p>
+  </div>
+</header>
+
+<main>
+  <div class="container-crypto">
+    <h2 style="font-size: 20px; margin-top: 0; margin-bottom: 20px; color: var(--ink);">1. Encryption / Decryption</h2>
+
+    <!-- Ligne 1 : Algorithm, Key, Shift Direction -->
+    <div class="row-3">
+      <div class="col-algo">
+        <label for="algorithm">Algorithm</label>
+        <select id="algorithm">
+          <option value="Caesar">Caesar</option>
+        </select>
+      </div>
+      <div class="col-key">
+        <label for="key">Key</label>
+        <input type="number" id="key" value="2">
+      </div>
+      <div class="col-dir">
+        <label for="direction">Shift Direction</label>
+        <select id="direction">
+          <option value="left">Left (Shift Left)</option>
+          <option value="right">Right (Shift Right)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Ligne 2 : Message -->
+    <div class="form-group-full">
+      <label for="message">Message</label>
+      <input type="text" id="message" value="HI">
+    </div>
+
+    <!-- Ligne 3 : Boutons -->
+    <div class="btn-row">
+      <button class="btn-custom btn-encrypt" onclick="processCaesar('chiffrer')">Encrypt</button>
+      <button class="btn-custom btn-decrypt" onclick="processCaesar('dechiffrer')">Decrypt</button>
+      <button class="btn-custom btn-swap" onclick="swapOutput()" title="Inverser Message et Output">⇅ Swap</button>
+    </div>
+
+    <!-- Ligne 4 : Output -->
+    <div class="form-group-full" style="margin-bottom: 0;">
+      <label for="output">Output</label>
+      <input type="text" id="output" placeholder="Ciphertext or decrypted text" readonly>
+    </div>
+  </div>
+</main>
+
+<footer>TP SSAD · USTHB · 2026-2027</footer>
+
+<script>
+// ===== LOGIQUE CÉSAR =====
+function mod(x) { return ((x % 26) + 26) % 26; }
+
+function caesar(texte, shift, direction, mode) {
+  // Si direction est 'left', le décalage va vers la gauche (-shift)
+  let effShift = (direction === 'left') ? -shift : shift;
+  
+  // Si on déchiffre, on inverse le sens global
+  if (mode === "dechiffrer") {
+    effShift = -effShift;
+  }
+
+  let t = texte.toUpperCase();
+  let sortie = "";
+
+  for (let i = 0; i < t.length; i++) {
+    let c = t.charCodeAt(i);
+    if (c >= 65 && c <= 90) {
+      let base = c - 65;
+      let newChar = String.fromCharCode(65 + mod(base + effShift));
+      sortie += newChar;
+    } else {
+      sortie += t.charAt(i);
+    }
+  }
+  return sortie;
+}
+
+function processCaesar(mode) {
+  const msg = document.getElementById("message").value;
+  const shift = parseInt(document.getElementById("key").value) || 0;
+  const direction = document.getElementById("direction").value;
+  const outputField = document.getElementById("output");
+
+  try {
+    if (!msg.trim()) throw new Error("Veuillez entrer un message.");
+    const resultat = caesar(msg, shift, direction, mode);
+    outputField.value = resultat;
+  } catch (e) {
+    outputField.value = "Erreur : " + e.message;
+  }
+}
+
+function swapOutput() {
+  const outputField = document.getElementById("output");
+  const messageField = document.getElementById("message");
+  if (outputField.value && !outputField.value.startsWith("Erreur")) {
+    messageField.value = outputField.value;
+    outputField.value = "";
+  }
+}
+</script>
+</body>
+</html>
