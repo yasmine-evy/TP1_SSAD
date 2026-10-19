@@ -1,0 +1,288 @@
+/* Playfair page - grid header, grey content, white cards, black text */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: #000000;
+  background: #ebebeb;
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+/* Keeps the content in the middle, not too wide */
+.container {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---------- Top part with the grid background ---------- */
+.hero {
+  padding: 60px 0 50px;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(#ececec 1px, transparent 1px),
+    linear-gradient(90deg, #ececec 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* Back arrow */
+.back {
+  display: block;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 2px 6px;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+/* Big title (white box behind the text so the grid does not cross it) */
+.hero h1 {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 0 8px;
+  background: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.8rem;
+  line-height: 1.2;
+}
+
+/* Description with a black line on the left */
+.subtitle {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 6px 14px;
+  background: #ffffff;
+  border-left: 3px solid #000000;
+  font-size: 1.05rem;
+}
+
+/* ---------- Grey part ---------- */
+.content {
+  padding: 40px 0 60px;
+}
+
+/* White rounded cards */
+.card {
+  background: #ffffff;
+  border: 1px solid #d6d6d6;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+/* ---------- Form ---------- */
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #000000;
+  background: #f3f3f3;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+}
+
+input:focus,
+textarea:focus,
+button:focus,
+summary:focus-visible,
+.back:focus {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* Checkbox line */
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}
+
+label.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #000000;
+}
+
+/* ---------- Buttons (round like the tabs) ---------- */
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+button {
+  padding: 10px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background: #000000;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #333333;
+}
+
+button.secondary {
+  color: #000000;
+  background: #dcdcdc;
+}
+
+button.secondary:hover {
+  background: #c8c8c8;
+}
+
+/* Swap goes to the far right of the line */
+button.swap {
+  margin-left: auto;
+}
+
+.error {
+  margin: 12px 0 0;
+  font-weight: bold;
+}
+
+.small {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+/* ---------- Result ---------- */
+.result {
+  min-height: 48px;
+  padding: 12px 14px;
+  background: #f3f3f3;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  font-family: "Courier New", monospace;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  word-break: break-all;
+}
+
+/* ---------- 5x5 table ---------- */
+table {
+  margin: 0 auto;
+  border-collapse: separate;
+  border-spacing: 5px;
+}
+
+td {
+  width: 48px;
+  height: 48px;
+  text-align: center;
+  font-family: "Courier New", monospace;
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: #f3f3f3;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+}
+
+/* Cells of the key letters */
+td.key-letter {
+  background: #c8c8c8;
+}
+
+/* ---------- Steps ---------- */
+.steps {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font-family: "Courier New", monospace;
+  background: #f3f3f3;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+}
+
+.steps p {
+  margin: 0 0 6px;
+}
+
+/* ---------- Open / close cards ---------- */
+summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 1.15rem;
+  cursor: pointer;
+  list-style: none;          /* hide the default triangle */
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Round arrow button on the right */
+summary::after {
+  content: "\25B6";
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 0.7rem;
+  background: #e6e6e6;
+  border-radius: 50%;
+}
+
+details[open] summary::after {
+  transform: rotate(90deg);
+}
+
+details[open] summary {
+  margin-bottom: 12px;
+}
+
+ul,
+ol {
+  padding-left: 22px;
+  margin: 0;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 2.1rem;
+  }
+
+  td {
+    width: 40px;
+    height: 40px;
+  }
+}
