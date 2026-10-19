@@ -6,7 +6,7 @@
 <title>Chiffrement de César</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  /* Ajustements spécifiques pour correspondre exactement au design souhaité */
+  
   .container-crypto {
     background: var(--white);
     border: 1px solid var(--grey-200);
@@ -36,7 +36,7 @@
     margin-bottom: 20px;
   }
   
-  /* Boutons style bleu foncé et gris */
+  
   .btn-custom {
     font: inherit; font-weight: 600; font-size: 14px;
     padding: 10px 22px; cursor: pointer; border-radius: 6px; border: none;
@@ -74,7 +74,7 @@
   <div class="container-crypto">
     <h2 style="font-size: 20px; margin-top: 0; margin-bottom: 20px; color: var(--ink);">1. Encryption / Decryption</h2>
 
-    <!-- Ligne 1 : Algorithm, Key, Shift Direction -->
+    
     <div class="row-3">
       <div class="col-algo">
         <label for="algorithm">Algorithm</label>
@@ -95,20 +95,20 @@
       </div>
     </div>
 
-    <!-- Ligne 2 : Message -->
+    
     <div class="form-group-full">
       <label for="message">Message</label>
       <input type="text" id="message" value="HI">
     </div>
 
-    <!-- Ligne 3 : Boutons -->
+    
     <div class="btn-row">
       <button class="btn-custom btn-encrypt" onclick="processCaesar('chiffrer')">Encrypt</button>
       <button class="btn-custom btn-decrypt" onclick="processCaesar('dechiffrer')">Decrypt</button>
       <button class="btn-custom btn-swap" onclick="swapOutput()" title="Inverser Message et Output">⇅ Swap</button>
     </div>
 
-    <!-- Ligne 4 : Output -->
+    
     <div class="form-group-full" style="margin-bottom: 0;">
       <label for="output">Output</label>
       <input type="text" id="output" placeholder="Ciphertext or decrypted text" readonly>
