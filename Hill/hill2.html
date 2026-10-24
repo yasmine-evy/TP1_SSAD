@@ -45,6 +45,7 @@
     <div class="boutons">
       <button class="principal" onclick="lancer('chiffrer')">Chiffrer</button>
       <button onclick="lancer('dechiffrer')">Déchiffrer</button>
+      <button onclick="swap()" title="Mettre le résultat dans le message">⇅ Swap</button>
     </div>
 
     <div class="resultat" id="res"></div>
@@ -114,6 +115,16 @@ function hill(texte, k, mode) {
   return { texte: out.map(function (v) { return String.fromCharCode(65 + v); }).join(""), matrice: m };
 }
 // ===== FIN ALGO =====
+
+// Swap : le résultat devient le nouveau message (pratique pour chiffrer puis déchiffrer)
+function swap() {
+  const res = document.getElementById("res");
+  const info = document.getElementById("info");
+  if (!res.textContent || res.classList.contains("erreur")) return;
+  document.getElementById("msg").value = res.textContent;
+  res.textContent = "";
+  info.style.display = "none";
+}
 
 function lancer(mode) {
   const res = document.getElementById("res");
