@@ -1,164 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Caesar Cipher</title>
-    <link rel="stylesheet" href="../style.css">
-    <style>
-      
-      .container-crypto {
-        background: var(--white);
-        border: 1px solid var(--grey-200);
-        border-radius: var(--radius);
-        padding: 30px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      }
-      .row-3 {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 18px;
-      }
-      .col-algo { flex: 2; display: flex; flex-direction: column; }
-      .col-key { flex: 1; display: flex; flex-direction: column; }
-      .col-dir { flex: 1.5; display: flex; flex-direction: column; }
-      
-      .form-group-full {
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 18px;
-      }
-      
-      .btn-row {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
-      }
-      
-      
-      .btn-custom {
-        font: inherit; font-weight: 600; font-size: 14px;
-        padding: 10px 22px; cursor: pointer; border-radius: 6px; border: none;
-        color: white; transition: background .2s;
-      }
-      .btn-encrypt, .btn-decrypt { background-color: #3b5998; }
-      .btn-encrypt:hover, .btn-decrypt:hover { background-color: #2d4373; }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caesar Cipher</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header>
+  <div class="hero">
+    <a class="retour" href="../index.html">← Back</a><br>
+    <h1>Caesar Cipher</h1>
+    <p class="intro">Each letter is shifted by <i>k</i> places in the alphabet.</p>
+  </div>
+</header>
 
-      input[type="text"], input[type="number"], select {
-        font: inherit; border: 1px solid #cccccc; border-radius: 6px;
-        padding: 10px 12px; background: var(--white); color: var(--ink);
-        outline: none; transition: border-color 0.2s;
-      }
-      input[type="text"]:focus, input[type="number"]:focus, select:focus {
-        border-color: #3b5998;
-      }
-      input[readonly] {
-        background-color: #f9f9f9;
-        color: #555;
-      }
+<main>
+  <!-- ===== ENCRYPT / DECRYPT ===== -->
+  <div class="bloc">
+    <h2>Encrypt / Decrypt</h2>
+    <p class="petit">Uppercase and lowercase are kept as typed (<b>Hello</b> → <b>Khoor</b>). <b>Spaces are removed.</b> Key: 1 to 25.</p>
 
-      .note { color: var(--grey-600); font-size: .93rem; line-height: 1.6; margin: 0 0 14px; }
-
-      .error-msg { color: #c0392b; font-weight: 600; margin: 10px 0 0; min-height: 1em; }
-    </style>  
-  </head>
-  <body>
-    <header>
-      <div class="hero">
-        <a class="retour" href="../index.html">← Back</a><br>
-        <h1>Caesar Cipher</h1>
-        <p class="intro">
-          Encryption and decryption interface (A–Z and a–z) with shift direction control.
-        </p>
+    <div class="row">
+      <div>
+        <label for="key">Key</label>
+        <input type="number" id="key" value="3" min="1" max="25">
       </div>
-    </header>
-
-    <main>
-      <div class="container-crypto">
-        <h2 style="font-size: 20px; margin-top: 0; margin-bottom: 20px; color: var(--ink);">1. Encryption / Decryption</h2>
-        <p class="note">The classical Caesar rule is unchanged: 
-          each A–Z letter is shifted by the numeric key. The transmitted package has 
-          <b>no literal spaces</b>.</p>
-        <div class="row-3">
-          <div class="col-key">
-            <label for="key">Key</label>
-            <input type="number" id="key" value="2" min="1">
-          </div>
-          <div class="col-dir">
-            <label for="direction">Shift Direction</label>
-            <select id="direction">
-              <option value="left">Left</option>
-              <option value="right">Right</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group-full">
-          <label for="message">Message</label>
-        <textarea type="text" id="message" rows="4" placeholder="Type your message here"></textarea>
-        </div>
-
-        <div class="btn-row">
-          <button class="btn-custom btn-encrypt" onclick="processCaesar('chiffrer')">Encrypt</button>
-          <button class="btn-custom btn-decrypt" onclick="processCaesar('dechiffrer')">Decrypt</button>
-        </div>
-
-        <div class="form-group-full" style="margin-bottom: 0;">
-          <label for="output">Output</label>
-          <input type="text" id="output" placeholder="Ciphertext or decrypted text" readonly>
-        </div>
-
-        <p class="error-msg" id="error"></p>
+      <div>
+        <label for="direction">Shift direction</label>
+        <select id="direction">
+          <option value="right">Right</option>
+          <option value="left">Left</option>
+        </select>
       </div>
-    </main>
+    </div>
 
-    <footer>TP SSAD · USTHB · 2026-2027</footer>
+    <label for="message">Message</label>
+    <input type="text" id="message" value="Hello World">
 
-    <script>
-      // ===== LOGIQUE CÉSAR =====
-      function mod(x) { return ((x % 26) + 26) % 26; }
+    <div class="boutons">
+      <button class="principal" onclick="processCaesar('encrypt')">Encrypt</button>
+      <button onclick="processCaesar('decrypt')">Decrypt</button>
+    </div>
 
-      function caesar(texte, shift, direction, mode) {
-        // Si direction est 'left', le décalage va vers la gauche (-shift)
-        let effShift = (direction === 'left') ? -shift : shift;
-        
-        // Si on déchiffre, on inverse le sens global
-        if (mode === "dechiffrer") {
-          effShift = -effShift;
-        }
+    <div class="resultat" id="output"></div>
+    <p class="msg-info" id="info"></p>
+  </div>
 
-        let t = texte.toUpperCase();
-        let sortie = "";
+  <!-- ===== HISTORY ===== -->
+  <div class="bloc">
+    <h2>History</h2>
+    <p class="petit">Every operation is saved (it stays after reloading the page).</p>
+    <div class="table-wrap" id="historyBox"></div>
+    <div class="boutons">
+      <button class="danger" onclick="clearHistory()">Clear history</button>
+    </div>
+  </div>
 
-        for (let i = 0; i < t.length; i++) {
-          let c = t.charCodeAt(i);
-          if (c >= 65 && c <= 90) {
-            let base = c - 65;
-            let newChar = String.fromCharCode(65 + mod(base + effShift));
-            sortie += newChar;
-          } else {
-            sortie += t.charAt(i);
-          }
-        }
-        return sortie;
-      }
+  <!-- ===== FLAWS + SOLUTIONS ===== -->
+  <details class="bloc">
+    <summary>Flaws and solutions</summary>
+    <div class="table-wrap" style="max-height:none">
+      <table class="t">
+        <thead><tr><th>Flaw</th><th>Solution</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Key 26 (or 0): the message does not change.</b><br>Shifting by 26 = one full turn of the alphabet.</td>
+            <td><span class="tag ok">Applied</span> The key is reduced to 0–25 (modulo 26) and <b>0 is refused</b>.<br>
+              <i>Example:</i> key 26 → refused (ABC → ABC). Key 29 → accepted as key 3 (29 − 26).</td>
+          </tr>
+          <tr>
+            <td><b>Visible spaces and punctuation:</b> word lengths help to guess the text.</td>
+            <td><span class="tag ok">Applied</span> Spaces are removed before encryption.<br>
+              <i>Example:</i> "Bonjour le monde" → "Bonjourlemonde" → "Erqmrxuohprqgh" (key 3).</td>
+          </tr>
+          <tr>
+            <td><b>Only 25 keys:</b> an attacker simply tries them all (brute force).</td>
+            <td>Use a longer key: a <i>word</i> that gives a different shift for each letter (Vigenère), or a modern cipher (AES).</td>
+          </tr>
+          <tr>
+            <td><b>Frequency analysis:</b> the same letter always gives the same cipher letter; E stays the most frequent letter.</td>
+            <td>Change the shift from one letter to the next (Vigenère) to break the frequencies.</td>
+          </tr>
+          <tr>
+            <td><b>Known plaintext:</b> a single pair (plain letter, cipher letter) reveals the key.</td>
+            <td>Never reuse the same key for several sensitive messages; change the key often.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
 
-      function processCaesar(mode) {
-        const msg = document.getElementById("message").value;
-        const shift = parseInt(document.getElementById("key").value) || 0;
-        const direction = document.getElementById("direction").value;
-        const outputField = document.getElementById("output");
-        const errorMsg = document.getElementById("error");
+  <!-- ===== ATTACKER ===== -->
+  <details class="bloc">
+    <summary>Attacker (brute force)</summary>
+    <p class="petit">The attacker does not know the key: he tries the shifts <b>1 to 25</b> (26 is useless: it gives the same text back). The text closest to French is marked ★.</p>
+    <label for="cipher">Ciphertext to attack</label>
+    <input type="text" id="cipher" placeholder="Paste a Caesar-encrypted message here">
+    <div class="boutons">
+      <button class="principal" onclick="attackCaesar()">Attack</button>
+      <button onclick="useOutput()">Use the result above</button>
+    </div>
+    <div class="table-wrap" id="attackBox" style="margin-top:14px"><div class="vide">No attack launched yet.</div></div>
+  </details>
+</main>
 
-        try {
-          if (!msg.trim()) throw new Error("Please entrer a message.");
-          const resultat = caesar(msg, shift, direction, mode);
-          outputField.value = resultat;
-        } catch (e) {
-          errorMsg.textContent = "Erreur : " + e.message;
-        }
-      }
-    </script>
-  </body>
+<footer>TP SSAD · USTHB · 2026-2027</footer>
+
+<script>
+// ===== CAESAR LOGIC =====
+function mod(x) { return ((x % 26) + 26) % 26; }
+
+// Shift one letter, keeping its case (A–Z and a–z). Other characters are unchanged.
+function shiftChar(c, effShift) {
+  if (c >= 65 && c <= 90)  return String.fromCharCode(65 + mod(c - 65 + effShift));   // uppercase
+  if (c >= 97 && c <= 122) return String.fromCharCode(97 + mod(c - 97 + effShift));   // lowercase
+  return String.fromCharCode(c);
+}
+
+// Remove every space (space, tab, new line...)
+function removeSpaces(text) { return text.replace(/\s+/g, ''); }
+
+function caesar(text, shift, direction, mode) {
+  let eff = (direction === 'left') ? -shift : shift;   // 'left' = towards the left
+  if (mode === 'decrypt') eff = -eff;                  // decrypting = opposite shift
+  let out = '';
+  for (let i = 0; i < text.length; i++) out += shiftChar(text.charCodeAt(i), eff);
+  return out;
+}
+
+// Check the key. Returns { shift (1..25), note }.
+// "Shift of 26" flaw: reduce modulo 26, then refuse 0.
+function checkKey(raw) {
+  const k = Number(raw);
+  if (String(raw).trim() === '' || !Number.isInteger(k)) throw new Error('The key must be an integer.');
+  const r = mod(k);
+  if (r === 0) throw new Error('Key ' + k + ' refused: shifting by 0 or 26 (a full turn) leaves the text unchanged (ABC → ABC). Choose a key from 1 to 25.');
+  const note = (r !== k) ? 'Key ' + k + ' reduced to ' + r + ' (modulo 26): the result is the same.' : '';
+  return { shift: r, note: note };
+}
+
+// ===== ATTACKER: brute force on shifts 1 to 25 =====
+const FREQ_FR = [7.64,0.90,3.26,3.67,14.72,1.07,0.87,0.74,7.53,0.61,0.05,5.46,2.97,
+                 7.10,5.38,3.02,1.36,6.55,7.95,7.24,6.31,1.63,0.04,0.43,0.31,0.14];
+
+function score(text) {          // smaller = closer to French (chi-squared)
+  const cnt = new Array(26).fill(0);
+  let n = 0;
+  for (const ch of text.toUpperCase()) {
+    const c = ch.charCodeAt(0);
+    if (c >= 65 && c <= 90) { cnt[c - 65]++; n++; }
+  }
+  if (n === 0) return Infinity;
+  let s = 0;
+  for (let i = 0; i < 26; i++) {
+    const expected = FREQ_FR[i] * n / 100;
+    s += Math.pow(cnt[i] - expected, 2) / Math.max(expected, 0.01);
+  }
+  return s;
+}
+
+function bruteForce(cipher) {
+  const res = [];
+  for (let k = 1; k <= 25; k++) {
+    const plain = caesar(cipher, k, 'right', 'decrypt');
+    res.push({ k: k, text: plain, score: score(plain) });
+  }
+  let best = 0;
+  for (let i = 1; i < res.length; i++) if (res[i].score < res[best].score) best = i;
+  res[best].best = true;
+  return res;
+}
+
+// ===== HISTORY (localStorage, with in-memory fallback) =====
+const HKEY = 'caesar_history';
+let memory = [];
+function readHistory() {
+  try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch (e) { return memory; }
+}
+function writeHistory(list) {
+  memory = list;
+  try { localStorage.setItem(HKEY, JSON.stringify(list)); } catch (e) {}
+}
+function addHistory(entry) {
+  entry.date = new Date().toLocaleString('en-GB');
+  const list = readHistory();
+  list.unshift(entry);                         // newest first
+  writeHistory(list.slice(0, 100));
+  showHistory();
+}
+function clearHistory() { writeHistory([]); showHistory(); }
+
+function cell(tr, text, cls) {
+  const td = document.createElement('td');
+  td.textContent = text;                       // textContent: no HTML injection
+  if (cls) td.className = cls;
+  tr.appendChild(td);
+}
+function showHistory() {
+  const box = document.getElementById('historyBox');
+  const list = readHistory();
+  box.innerHTML = '';
+  if (list.length === 0) { box.innerHTML = '<div class="vide">History is empty.</div>'; return; }
+  const table = document.createElement('table');
+  table.className = 't';
+  table.innerHTML = '<thead><tr><th>Date</th><th>Operation</th><th>Key</th><th>Direction</th><th>Input</th><th>Result</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  list.forEach(function (h) {
+    const tr = document.createElement('tr');
+    cell(tr, h.date); cell(tr, h.operation); cell(tr, h.key); cell(tr, h.direction);
+    cell(tr, h.input, 'mono'); cell(tr, h.output, 'mono');
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  box.appendChild(table);
+}
+
+// ===== INTERFACE =====
+function processCaesar(mode) {
+  const raw = document.getElementById('message').value;
+  const out = document.getElementById('output');
+  const info = document.getElementById('info');
+  info.textContent = '';
+  out.className = 'resultat';
+  try {
+    const msg = removeSpaces(raw);                         // spaces erased
+    if (!msg) throw new Error('Please enter a message (not only spaces).');
+    const key = checkKey(document.getElementById('key').value);
+    const direction = document.getElementById('direction').value;
+    const result = caesar(msg, key.shift, direction, mode);
+    out.textContent = result;
+
+    const notes = [];
+    if (msg.length !== raw.length) notes.push((raw.length - msg.length) + ' space(s) removed.');
+    if (key.note) notes.push(key.note);
+    info.textContent = notes.join('\n');
+
+    addHistory({
+      operation: mode === 'encrypt' ? 'Encryption' : 'Decryption',
+      key: key.shift, direction: direction === 'left' ? 'Left' : 'Right',
+      input: raw, output: result
+    });
+  } catch (e) {
+    out.className = 'resultat erreur';
+    out.textContent = e.message;
+  }
+}
+
+function useOutput() {
+  const o = document.getElementById('output');
+  if (o.textContent && !o.classList.contains('erreur')) document.getElementById('cipher').value = o.textContent;
+}
+
+function attackCaesar() {
+  const cipher = removeSpaces(document.getElementById('cipher').value);
+  const box = document.getElementById('attackBox');
+  if (!cipher) { box.innerHTML = '<div class="vide">Enter a ciphertext to attack.</div>'; return; }
+  const res = bruteForce(cipher);
+  box.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 't';
+  table.innerHTML = '<thead><tr><th>Shift</th><th>Left equivalent</th><th>Text obtained</th><th></th></tr></thead>';
+  const tb = document.createElement('tbody');
+  let best = null;
+  res.forEach(function (r) {
+    const tr = document.createElement('tr');
+    if (r.best) { tr.className = 'best'; best = r; }
+    cell(tr, 'Right ' + r.k); cell(tr, 'Left ' + (26 - r.k));
+    cell(tr, r.text, 'mono'); cell(tr, r.best ? '★ likely' : '');
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  box.appendChild(table);
+  addHistory({
+    operation: 'Attack', key: best ? best.k : '-', direction: 'Right (1 to 25)',
+    input: cipher, output: best ? best.text : ''
+  });
+}
+
+showHistory();
+</script>
+</body>
 </html>

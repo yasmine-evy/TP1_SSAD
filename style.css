@@ -178,3 +178,35 @@ textarea { width: 100%; resize: vertical; }
 }
 .resultat:empty { display: none; }
 .resultat.erreur { letter-spacing: 0; font-family: inherit; font-size: .95rem; border-color: #c0392b; color: #c0392b; }
+
+/* ===== Ajouts : sections repliables, tableaux, champs ===== */
+details.bloc > summary {
+  cursor: pointer; font-weight: 600; font-size: 1.15rem; list-style: none;
+  display: flex; justify-content: space-between; align-items: center;
+}
+details.bloc > summary::-webkit-details-marker { display: none; }
+details.bloc > summary::after {
+  content: "▶"; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--grey-100); color: var(--grey-600); font-size: .65rem; transition: transform .25s;
+}
+details.bloc[open] > summary::after { transform: rotate(90deg); background: var(--ink); color: var(--white); }
+details.bloc[open] > summary { margin-bottom: 14px; }
+.petit { color: var(--grey-600); font-size: .93rem; line-height: 1.6; margin: 6px 0 12px; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; }
+.row > div { flex: 1; min-width: 150px; }
+select, input[type="text"] {
+  font: inherit; border: 1px solid var(--grey-200); border-radius: 8px;
+  padding: 9px 12px; background: var(--white); color: var(--ink); width: 100%;
+}
+.row input[type="number"] { width: 100%; }
+.boutons button.danger { border-color: #c0392b; color: #c0392b; }
+.table-wrap { max-height: 380px; overflow: auto; border: 1px solid var(--grey-200); border-radius: 8px; }
+table.t { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.t th, table.t td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--grey-100); vertical-align: top; }
+table.t th { background: var(--grey-50); position: sticky; top: 0; }
+table.t td.mono { font-family: Consolas, monospace; word-break: break-all; }
+table.t tr.best { background: #eaf5ea; font-weight: 600; }
+.vide { padding: 16px; color: var(--grey-400); text-align: center; }
+.tag { display: inline-block; font-size: .78rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grey-400); color: var(--grey-600); white-space: nowrap; }
+.tag.ok { border-color: #1e7e34; color: #1e7e34; background: #eaf5ea; }
+.msg-info { color: var(--grey-600); font-size: .9rem; min-height: 1.2em; margin: 8px 0 0; white-space: pre-line; }

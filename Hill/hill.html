@@ -1,39 +1,47 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chiffrement de Hill</title>
+<title>Hill Cipher</title>
 <link rel="stylesheet" href="../style.css">
+<style>
+  #att { letter-spacing: 0; font-size: 1rem; }
+</style>
 </head>
 <body>
 <header>
   <div class="hero">
-    <a class="retour" href="../index.html">← Retour</a><br>
-    <h1>Chiffrement de Hill</h1>
-    <p class="intro">Chiffrer des paires de lettres avec une matrice.</p>
+    <a class="retour" href="../index.html">← Back</a><br>
+    <h1>Hill Cipher</h1>
+    <p class="intro">Encrypt pairs of letters with a matrix.</p>
   </div>
 </header>
 
 <main>
   <div class="bloc">
-    <h2>Principe</h2>
-    <p>Chaque lettre devient un nombre (A=0 … Z=25). On chiffre les lettres deux par deux (x, y) avec une matrice clé 2×2, modulo 26 :</p>
+    <h2>Principle</h2>
+    <p>Each letter becomes a number (A=0 … Z=25). Letters are encrypted two by two (x, y) with a 2×2 key matrix, modulo 26:</p>
     <div class="exemple">
-      1re lettre = (a·x + b·y) mod 26<br>
-      2e lettre &nbsp;= (c·x + d·y) mod 26
+      1st letter = (a·x + b·y) mod 26<br>
+      2nd letter = (c·x + d·y) mod 26
     </div>
-    <p>Le déchiffrement utilise la matrice inverse : elle n'existe que si le déterminant (a·d − b·c) est premier avec 26.</p>
-    <div class="faille"><b>Faille :</b> Hill est linéaire, donc vulnérable à une attaque à texte clair connu.</div>
+    <p>Decryption uses the inverse matrix: it exists only if the determinant (a·d − b·c) is coprime with 26.</p>
+    <p>Uppercase and lowercase are accepted; the result is written in uppercase, without spaces.</p>
+    <p><b>Padding:</b> if the number of letters is <b>odd</b>, an <b>X</b> is added at the end before encryption. When decrypting, the <b>final X is removed</b>: the original message is recovered.</p>
+    <div class="exemple">
+      "HELLO" (5 letters) → HELLOX → encrypted (6 letters)<br>
+      decrypted: HELLOX → <b>HELLO</b> (the X is removed)
+    </div>
   </div>
 
   <div class="bloc">
-    <h2>Essayer</h2>
+    <h2>Try it</h2>
 
     <label for="msg">Message</label>
     <textarea id="msg" rows="3">HELP</textarea>
 
-    <label>Matrice clé 2×2</label>
+    <label>2×2 key matrix <span class="petit">(negative numbers are accepted)</span></label>
     <div class="matrice">
       <input id="a" type="number" value="3">
       <input id="b" type="number" value="3">
@@ -42,79 +50,239 @@
     </div>
 
     <div class="boutons">
-      <button class="principal" onclick="lancer('chiffrer')">Chiffrer</button>
-      <button onclick="lancer('dechiffrer')">Déchiffrer</button>
+      <button class="principal" onclick="run('encrypt')">Encrypt</button>
+      <button onclick="run('decrypt')">Decrypt</button>
+      <button onclick="validKey()" title="Fills the matrix with a key whose determinant is valid">Random valid key</button>
     </div>
 
     <div class="resultat" id="res"></div>
-    <p id="info" class="info" style="display:none"></p>
+    <p id="info" class="msg-info"></p>
   </div>
+
+  <div class="bloc">
+    <h2>Flaws and solutions</h2>
+    <div class="table-wrap" style="max-height:none">
+      <table class="t">
+        <thead><tr><th>Flaw</th><th>Solution</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Negative determinant</b> (e.g. a·d − b·c = −5): if the negative value is kept, the inverse is "not found" and a valid key is wrongly refused.</td>
+            <td><span class="tag ok">Applied</span> The determinant is brought back to 0…25: <code>det mod 26</code> (adding 26 while it is negative). Then we check that gcd(det, 26) = 1.<br>
+              <i>Example:</i> K = [1 2 ; 3 1] → det = 1×1 − 2×3 = <b>−5</b> → −5 + 26 = <b>21</b>; gcd(21, 26) = 1 → valid key; inverse of 21 = 5 (21×5 = 105 = 4×26 + 1).<br>
+              Counter-example: [1 3 ; 4 2] → det = −10 → 16; gcd(16, 26) = 2 → refused (use the "Random valid key" button to get a good one).</td>
+          </tr>
+          <tr>
+            <td><b>Ambiguous padding X:</b> if the original message has an <i>even</i> number of letters and already ends with X (e.g. "AX"), that X is wrongly removed when decrypting.</td>
+            <td><span class="tag ok">Applied</span> A warning is shown at encryption in this case. To avoid it: add one more letter at the end of the message, or rephrase.</td>
+          </tr>
+          <tr>
+            <td><b>Linear algorithm:</b> with a known plaintext (2 blocks) and its ciphertext, the key is found by a simple computation (see the attacker below).</td>
+            <td>Use a bigger matrix (3×3 or more) and add a non-linear part (for example a shift vector added after the multiplication: "affine" Hill).</td>
+          </tr>
+          <tr>
+            <td><b>Same blocks → same results:</b> repetitions in the message stay visible.</td>
+            <td>Chain the blocks (CBC mode): each block is mixed with the previous encrypted block before being encrypted.</td>
+          </tr>
+          <tr>
+            <td><b>Few keys:</b> only 157,248 valid 2×2 matrices: a computer tests them all.</td>
+            <td>Bigger matrices (3×3 → about 1.6×10¹² valid keys) or a modern cipher (AES).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <details class="bloc">
+    <summary>Attacker: known plaintext</summary>
+    <p>The attacker knows a plain message and its encrypted version. Since Hill is linear, he solves <b>K · P = C</b> (P = plain blocks, C = cipher blocks) and finds the key without guessing.</p>
+    <label for="kp">Known plaintext (at least 4 letters)</label>
+    <textarea id="kp" rows="2" placeholder="e.g. HELP"></textarea>
+    <label for="kc">Matching ciphertext</label>
+    <textarea id="kc" rows="2" placeholder="e.g. HIAT"></textarea>
+    <div class="boutons">
+      <button class="principal" onclick="attack()">Recover the key</button>
+      <button onclick="fillAttack()" title="Reuse the last encryption">Use the last encryption</button>
+    </div>
+    <div class="resultat" id="att"></div>
+  </details>
 </main>
 
 <footer>TP SSAD · USTHB · 2026-2027</footer>
 
 <script>
-// ===== ALGO =====
+// ===== ALGORITHM =====
+// Brings any number (even negative) into 0..25
 function mod(x) { return ((x % 26) + 26) % 26; }
 
-function pgcd(a, b) { return b === 0 ? a : pgcd(b, a % b); }
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
-// Inverse de x modulo 26 (ou -1 s'il n'existe pas)
+// Inverse of x modulo 26 (or -1 if it does not exist)
 function inverseMod(x) {
   for (let i = 1; i < 26; i++) if (mod(x * i) === 1) return i;
   return -1;
 }
 
-// k = [a, b, c, d]  (matrice [[a, b], [c, d]])
-function hill(texte, k, mode) {
+// Keep only the 26 letters (upper AND lower case) and convert to uppercase
+function clean(text) { return text.toUpperCase().replace(/[^A-Z]/g, ""); }
+
+// Determinant study (handles the negative case)
+function detInfo(k) {
   const [a, b, c, d] = k;
-  const det = mod(a * d - b * c);
-  if (pgcd(det, 26) !== 1) {
-    throw new Error("Matrice non inversible modulo 26 (déterminant = " + det + "). Choisis-en une autre.");
+  const raw = a * d - b * c;             // may be negative
+  const norm = mod(raw);                 // brought back to 0..25
+  const g = gcd(norm, 26);
+  return { raw: raw, norm: norm, gcd: g, ok: g === 1, inv: g === 1 ? inverseMod(norm) : -1 };
+}
+
+function detText(k) {
+  const [a, b, c, d] = k;
+  const di = detInfo(k);
+  let t = "Determinant = a·d − b·c = " + a + "×" + d + " − " + b + "×" + c + " = " + di.raw;
+  if (di.raw !== di.norm) t += "\n" + (di.raw < 0 ? "It is negative: " : "It is above 25: ") + "bring it back to 0…25 → " + di.norm + " (mod 26)";
+  t += "\ngcd(" + di.norm + ", 26) = " + di.gcd + (di.ok ? " → the key is valid" : " → key NOT valid (it must be 1)");
+  if (di.ok) t += "\nInverse of " + di.norm + " modulo 26 = " + di.inv + " (" + di.norm + "×" + di.inv + " = " + (di.norm * di.inv) + " ≡ 1)";
+  return t;
+}
+
+// k = [a, b, c, d]  (matrix [[a, b], [c, d]])
+function hill(text, k, mode) {
+  const [a, b, c, d] = k;
+  const di = detInfo(k);
+  if (!di.ok) {
+    throw new Error("Matrix not invertible modulo 26.\n" + detText(k) + "\nChoose another matrix.");
   }
 
   let m = [a, b, c, d];
-  if (mode === "dechiffrer") {
-    const inv = inverseMod(det);
-    m = [d * inv, -b * inv, -c * inv, a * inv];     // matrice inverse
+  if (mode === "decrypt") {
+    const inv = di.inv;
+    m = [d * inv, -b * inv, -c * inv, a * inv];     // inverse matrix
   }
   m = m.map(mod);
 
-  let t = texte.toUpperCase().replace(/[^A-Z]/g, "");
-  if (t.length === 0) throw new Error("Écris un message avec des lettres.");
-  if (t.length % 2 === 1) {
-    if (mode === "dechiffrer") throw new Error("Le message chiffré doit avoir un nombre pair de lettres.");
-    t += "X";                                        // on complète avec X
+  const original = clean(text);
+  let t = original;
+  if (t.length === 0) throw new Error("Write a message containing letters.");
+
+  let xAdded = false, xRemoved = false;
+  if (mode === "encrypt") {
+    if (t.length % 2 === 1) { t += "X"; xAdded = true; }   // odd length: add X at the end
+  } else if (t.length % 2 === 1) {
+    throw new Error("The encrypted message must have an even number of letters.");
   }
 
-  let sortie = "";
+  let out = "";
   for (let i = 0; i < t.length; i += 2) {
     const x = t.charCodeAt(i) - 65;
     const y = t.charCodeAt(i + 1) - 65;
-    sortie += String.fromCharCode(65 + mod(m[0] * x + m[1] * y));
-    sortie += String.fromCharCode(65 + mod(m[2] * x + m[3] * y));
+    out += String.fromCharCode(65 + mod(m[0] * x + m[1] * y));
+    out += String.fromCharCode(65 + mod(m[2] * x + m[3] * y));
   }
-  return { texte: sortie, matrice: m };
-}
-// ===== FIN ALGO =====
 
-function lancer(mode) {
-  const k = ["a", "b", "c", "d"].map(function (id) {
-    return parseInt(document.getElementById(id).value) || 0;
+  if (mode === "decrypt" && out.endsWith("X")) {          // remove the padding X
+    out = out.slice(0, -1);
+    xRemoved = true;
+  }
+  // Ambiguous case: even number of letters that already ends with X
+  const xAmbiguous = mode === "encrypt" && !xAdded && original.endsWith("X");
+  return { text: out, matrix: m, xAdded: xAdded, xRemoved: xRemoved, xAmbiguous: xAmbiguous, block: t };
+}
+
+// ===== ATTACK: known plaintext =====
+// Find two plain blocks forming an invertible matrix P, then K = C · P⁻¹
+function knownPlaintextAttack(plain, cipher) {
+  const p = clean(plain), c = clean(cipher);
+  if (p.length < 4 || p.length !== c.length || p.length % 2 !== 0) {
+    throw new Error("Plaintext and ciphertext must have the same (even) length, at least 4 letters.");
+  }
+  const n = p.length / 2;
+  const v = function (s, i) { return [s.charCodeAt(2 * i) - 65, s.charCodeAt(2 * i + 1) - 65]; };
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const [x1, y1] = v(p, i), [x2, y2] = v(p, j);     // columns of P
+      const [u1, w1] = v(c, i), [u2, w2] = v(c, j);     // columns of C
+      const det = mod(x1 * y2 - x2 * y1);
+      if (gcd(det, 26) !== 1) continue;                 // P not invertible: try another pair
+      const inv = inverseMod(det);
+      const Pi = [y2 * inv, -x2 * inv, -y1 * inv, x1 * inv].map(mod);   // P⁻¹
+      const K = [
+        mod(u1 * Pi[0] + u2 * Pi[2]), mod(u1 * Pi[1] + u2 * Pi[3]),
+        mod(w1 * Pi[0] + w2 * Pi[2]), mod(w1 * Pi[1] + w2 * Pi[3])
+      ];
+      let ok = true;                                    // check on every block
+      for (let q = 0; q < n && ok; q++) {
+        const [x, y] = v(p, q), [u, w] = v(c, q);
+        if (mod(K[0] * x + K[1] * y) !== u || mod(K[2] * x + K[3] * y) !== w) ok = false;
+      }
+      if (ok) return K;
+    }
+  }
+  throw new Error("Key not found: this data does not allow recovering it (non-invertible plain blocks, or text not encrypted with 2×2 Hill).");
+}
+// ===== END ALGORITHM =====
+
+let last = { plain: "", cipher: "" };
+
+function readKey() {
+  return ["a", "b", "c", "d"].map(function (id) {
+    const raw = document.getElementById(id).value.trim();
+    const v = Number(raw);
+    if (raw === "" || !Number.isInteger(v)) throw new Error("The key values must be integers.");
+    return v;
   });
+}
+
+function run(mode) {
   const res = document.getElementById("res");
   const info = document.getElementById("info");
   try {
+    const k = readKey();
     const r = hill(document.getElementById("msg").value, k, mode);
     res.className = "resultat";
-    res.textContent = r.texte;
-    info.style.display = "block";
-    info.textContent = "Matrice utilisée : [ " + r.matrice[0] + " " + r.matrice[1] + " ; " + r.matrice[2] + " " + r.matrice[3] + " ]" +
-      (mode === "dechiffrer" ? "  (inverse de la clé, mod 26)" : "");
+    res.textContent = r.text;
+    let txt = detText(k) + "\nMatrix used: [ " + r.matrix[0] + " " + r.matrix[1] + " ; " + r.matrix[2] + " " + r.matrix[3] + " ]" +
+      (mode === "decrypt" ? "  (inverse of the key, mod 26)" : "");
+    if (mode === "encrypt") {
+      last = { plain: r.block, cipher: r.text };
+      if (r.xAdded) txt += "\nOdd number of letters: an X was added at the end before encryption.";
+      if (r.xAmbiguous) txt += "\n⚠ The message has an even number of letters and already ends with X: it will be removed when decrypting. Add one more letter at the end to avoid this.";
+    } else if (r.xRemoved) {
+      txt += "\nThe final X (padding) was removed from the message.";
+    }
+    info.textContent = txt;
   } catch (e) {
     res.className = "resultat erreur";
+    res.style.whiteSpace = "pre-line";
     res.textContent = e.message;
-    info.style.display = "none";
+    info.textContent = "";
+  }
+}
+
+// Fill the matrix with a key whose determinant is valid (gcd = 1)
+function validKey() {
+  let k;
+  do {
+    k = [0, 1, 2, 3].map(function () { return Math.floor(Math.random() * 26); });
+  } while (!detInfo(k).ok);
+  ["a", "b", "c", "d"].forEach(function (id, i) { document.getElementById(id).value = k[i]; });
+  document.getElementById("res").textContent = "";
+  document.getElementById("res").className = "resultat";
+  document.getElementById("info").textContent = detText(k);
+}
+
+function fillAttack() {
+  document.getElementById("kp").value = last.plain;
+  document.getElementById("kc").value = last.cipher;
+}
+
+function attack() {
+  const out = document.getElementById("att");
+  try {
+    const K = knownPlaintextAttack(document.getElementById("kp").value, document.getElementById("kc").value);
+    out.className = "resultat";
+    out.textContent = "Key recovered: [ " + K[0] + " " + K[1] + " ; " + K[2] + " " + K[3] + " ]";
+  } catch (e) {
+    out.className = "resultat erreur";
+    out.textContent = e.message;
   }
 }
 </script>
