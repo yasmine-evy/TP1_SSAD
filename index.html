@@ -1,58 +1,54 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Framework de chiffrement et de sécurité</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<header>
-  <div class="hero">
-    <h1>Framework de chiffrement et de sécurité</h1>
-    <p class="intro">
-      Ce site regroupe les différentes parties de notre TP : les algorithmes de chiffrement
-      et de déchiffrement (César, Hill et Playfair), l'étude des mots de passe avec les attaques
-      possibles et les moyens de s'en protéger, ainsi que la vérification de l'intégrité et de
-      l'authenticité d'un message. Choisissez un onglet pour commencer.
-    </p>
-  </div>
-</header>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Encryption & Security</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
 
-<main>
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Chiffrement</button>
-    <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Mot de passe</button>
-    <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Intégrité</button>
-  </div>
+  <body>
+    <header>
+      <div class="hero">
+        <h1>Encryption and Security Framework</h1>
+        <p class="intro">
+          This site brings together the different parts of our lab assignment: the encryption and
+          decryption algorithms (Caesar, Hill, and Playfair), the study of passwords along with 
+          possible attacks and ways to protect against them, as well as the verification of a message's
+          integrity.<br>Choose a tab to get started.
+        </p>
+      </div>
+    </header>
 
-  <!-- Onglet Chiffrement -->
-  <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
-    <a class="bar bar-link" href="cesar.html"><span class="bar-head">César <span class="arrow">▶</span></span></a>
-    <a class="bar bar-link" href="hill.html"><span class="bar-head">Hill <span class="arrow">▶</span></span></a>
-    <a class="bar bar-link" href="playfair.html"><span class="bar-head">Playfair <span class="arrow">▶</span></span></a>
-  </section>
+    <main>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Encryption</button>
+        <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Password</button>
+        <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Integrity</button>
+      </div>
 
-  <!-- Onglet Mot de passe -->
-  <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
-    <div class="bar">
-      <button class="bar-head" aria-expanded="false">Password generator <span class="arrow">▶</span></button>
-      <div class="bar-body"><div class="bar-inner"><div class="slot" id="password-generator"></div></div></div>
-    </div>
-    <div class="bar">
-      <button class="bar-head" aria-expanded="false">Password protection <span class="arrow">▶</span></button>
-      <div class="bar-body"><div class="bar-inner"><div class="slot" id="password-protection"></div></div></div>
-    </div>
-  </section>
+      <!-- Onglet Chiffrement -->
+      <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
+        <a class="bar bar-link" href="./Caesar/caesarmod.html"><span class="bar-head">Caesar <span class="arrow">▶</span></span></a>
+        <a class="bar bar-link" href="./Hill/hillmod.html"><span class="bar-head">Hill <span class="arrow">▶</span></span></a>
+        <a class="bar bar-link" href="./Playfair/playfairmod.html"><span class="bar-head">Playfair <span class="arrow">▶</span></span></a>
+      </section>
 
-  <!-- Onglet Intégrité -->
-  <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
-    <div class="slot" id="integrite"></div>
-  </section>
-</main>
+      <!-- Onglet Mot de passe -->
+      <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+          <a class="bar bar-link" href="#"><span class="bar-head">Password Generator <span class="arrow">▶</span></span></a>
+          <a class="bar bar-link" href="#"><span class="bar-head">Brute Force Attack <span class="arrow">▶</span></span></a>
+          <a class="bar bar-link" href="#"><span class="bar-head">Directionay Attack <span class="arrow">▶</span></span></a>
+      </section>
 
-<footer>TP SSAD · USTHB · 2026-2027</footer>
+      <!-- Onglet Intégrité -->
+      <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
+        <div class="slot" id="integrite"></div>
+      </section>
+    </main>
 
-<script src="script.js"></script>
-</body>
+    <footer>TP SSAD · USTHB · 2026-2027</footer>
+
+    <script src="script.js"></script>
+  </body>
 </html>

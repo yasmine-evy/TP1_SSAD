@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chiffrement de Hill</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../style.css">
 </head>
 <body>
 <header>
   <div class="hero">
-    <a class="retour" href="index.html">← Retour</a><br>
+    <a class="retour" href="../index.html">← Retour</a><br>
     <h1>Chiffrement de Hill</h1>
     <p class="intro">Chiffrer des paires de lettres avec une matrice.</p>
   </div>
@@ -24,6 +24,7 @@
       2e lettre &nbsp;= (c·x + d·y) mod 26
     </div>
     <p>Le déchiffrement utilise la matrice inverse : elle n'existe que si le déterminant (a·d − b·c) est premier avec 26.</p>
+    <p>Bourrage : on ajoute toujours 1 ou 2 lettres à la fin (« A » ou « BB »), ce qui permet de les retirer sans ambiguïté au déchiffrement.</p>
     <div class="faille"><b>Faille :</b> Hill est linéaire, donc vulnérable à une attaque à texte clair connu.</div>
   </div>
 
@@ -80,31 +81,50 @@ function hill(texte, k, mode) {
   }
   m = m.map(mod);
 
-  let t = texte.toUpperCase().replace(/[^A-Z]/g, "");
+  const t = texte.toUpperCase().replace(/[^A-Z]/g, "");
   if (t.length === 0) throw new Error("Écris un message avec des lettres.");
-  if (t.length % 2 === 1) {
-    if (mode === "dechiffrer") throw new Error("Le message chiffré doit avoir un nombre pair de lettres.");
-    t += "X";                                        // on complète avec X
+  let nums = [...t].map(function (ch) { return ch.charCodeAt(0) - 65; });
+
+  if (mode === "dechiffrer") {
+    if (nums.length % 2 === 1) throw new Error("Le message chiffré doit avoir un nombre pair de lettres.");
+  } else {
+    // Bourrage non ambigu : on ajoute p lettres, chacune valant p-1 (A = 1 lettre, BB = 2 lettres).
+    // Si la longueur est déjà paire, on ajoute un bloc complet "BB".
+    const p = 2 - (nums.length % 2);
+    nums = nums.concat(Array(p).fill(p - 1));
   }
 
-  let sortie = "";
-  for (let i = 0; i < t.length; i += 2) {
-    const x = t.charCodeAt(i) - 65;
-    const y = t.charCodeAt(i + 1) - 65;
-    sortie += String.fromCharCode(65 + mod(m[0] * x + m[1] * y));
-    sortie += String.fromCharCode(65 + mod(m[2] * x + m[3] * y));
+  let out = [];
+  for (let i = 0; i < nums.length; i += 2) {
+    const x = nums[i];
+    const y = nums[i + 1];
+    out.push(mod(m[0] * x + m[1] * y));
+    out.push(mod(m[2] * x + m[3] * y));
   }
-  return { texte: sortie, matrice: m };
+
+  if (mode === "dechiffrer") {
+    // La dernière lettre donne le nombre p de lettres de bourrage à retirer
+    const p = out[out.length - 1] + 1;
+    if (p < 1 || p > 2 || out.slice(-p).some(function (v) { return v !== p - 1; })) {
+      throw new Error("Bourrage invalide : mauvaise clé ou message modifié.");
+    }
+    out = out.slice(0, out.length - p);
+  }
+
+  return { texte: out.map(function (v) { return String.fromCharCode(65 + v); }).join(""), matrice: m };
 }
 // ===== FIN ALGO =====
 
 function lancer(mode) {
-  const k = ["a", "b", "c", "d"].map(function (id) {
-    return parseInt(document.getElementById(id).value) || 0;
-  });
   const res = document.getElementById("res");
   const info = document.getElementById("info");
   try {
+    const k = ["a", "b", "c", "d"].map(function (id) {
+      const brut = document.getElementById(id).value.trim();
+      const v = Number(brut);
+      if (brut === "" || !Number.isInteger(v)) throw new Error("Les valeurs de la clé doivent être des nombres entiers.");
+      return v;
+    });
     const r = hill(document.getElementById("msg").value, k, mode);
     res.className = "resultat";
     res.textContent = r.texte;

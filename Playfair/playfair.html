@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Playfair Cipher</title>
-  <link rel="stylesheet" href="Playfair-style.css">
+  <link rel="stylesheet" href="playfair-style.css">
 </head>
 <body>
 
   <!-- Top part: grid background, back arrow, title and description -->
   <header class="hero">
     <div class="container">
-      <a class="back" href="index.html">&larr; Back</a>
+      <a class="back" href="../index.html">&larr; Back</a>
       <h1>Playfair Cipher</h1>
       <p class="subtitle">Encrypt pairs of letters with a 5x5 key table.</p>
     </div>
@@ -74,10 +74,10 @@
         <summary>How it works</summary>
         <ol>
           <li>Remove the J: it is replaced by I. Keep letters only.</li>
-          <li>Cut the text into pairs. If a pair has two equal letters, insert the padding letter (X by default) between them. If the length is odd, add the padding letter at the end.</li>
-          <li>Same row: take the letter to the right (encrypt) or to the left (decrypt).</li>
-          <li>Same column: take the letter below (encrypt) or above (decrypt).</li>
-          <li>Rectangle: swap each letter with the one in the same row, in the other corner.</li>
+          <li>Cut the text into pairs. If a pair has two identical letters, the padding letter (X by default) is inserted between them. If the length is odd, the padding letter is added at the end.</li>
+          <li><b>Same row:</b> take the letter to the right (encrypt) or to the left (decrypt).</li>
+          <li><b>Same column:</b> take the letter below (encrypt) or above (decrypt).</li>
+          <li><b>Rectangle:</b> swap each letter with the one in the same row, in the other corner.</li>
         </ol>
       </details>
 
@@ -97,6 +97,6 @@
     </div>
   </main>
 
-  <script src="Playfair-script.js"></script>
+  <script src="playfair-script.js"></script>
 </body>
 </html>
