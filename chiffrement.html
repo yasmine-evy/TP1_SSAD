@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encrypt / Decrypt a message</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .params { border-left: 3px solid var(--ink); padding-left: 14px; margin-top: 14px; }
+  .params .hint { margin: 0 0 4px; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin-top: 12px; }
+  .check input { width: auto; }
+  .grille { border-collapse: collapse; margin-top: 8px; }
+  .grille td { width: 34px; height: 34px; text-align: center; border: 1px solid var(--grey-200); font-family: Consolas, monospace; }
+  .grille td.k { background: var(--grey-100); font-weight: 700; }
+  .faille-box { margin-top: 14px; border: 1px solid var(--grey-200); border-radius: 8px; padding: 10px 14px; }
+  .faille-box summary { cursor: pointer; font-weight: 600; }
+  .faille-box table.t { margin-top: 10px; }
+  .details { white-space: pre-line; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hero">
+    <a class="retour" href="index.html">← Back</a><br>
+    <h1>Encrypt / Decrypt a message</h1>
+    <p class="intro">Write a message, choose the algorithm (Caesar, Hill or Playfair) to encrypt it, then choose the algorithm to decrypt it.</p>
+  </div>
+</header>
+
+<main>
+  <!-- ===== SENDER ===== -->
+  <div class="bloc">
+    <h2>1. Encryption (sender)</h2>
+    <label for="e-msg">Message</label>
+    <textarea id="e-msg" rows="3">Hello World</textarea>
+
+    <label for="e-algo">Algorithm</label>
+    <select id="e-algo" onchange="showParams('e')">
+      <option value="caesar">Caesar</option>
+      <option value="hill">Hill</option>
+      <option value="playfair">Playfair</option>
+    </select>
+    <div id="e-params"></div>
+    <details class="faille-box" id="e-flaws"></details>
+
+    <div class="boutons">
+      <button class="principal" onclick="doEncrypt()">Encrypt</button>
+    </div>
+    <div class="resultat" id="e-out"></div>
+    <p class="msg-info details" id="e-info"></p>
+    <div id="e-extra"></div>
+    <div class="boutons" id="e-send" style="display:none">
+      <button onclick="sendToReceiver()">Send to the receiver ↓</button>
+    </div>
+  </div>
+
+  <!-- ===== RECEIVER ===== -->
+  <div class="bloc">
+    <h2>2. Decryption (receiver)</h2>
+    <label for="d-msg">Encrypted message</label>
+    <textarea id="d-msg" rows="3" placeholder="Paste or send the encrypted message here"></textarea>
+
+    <label for="d-algo">Algorithm</label>
+    <select id="d-algo" onchange="showParams('d')">
+      <option value="caesar">Caesar</option>
+      <option value="hill">Hill</option>
+      <option value="playfair">Playfair</option>
+    </select>
+    <div id="d-params"></div>
+    <details class="faille-box" id="d-flaws"></details>
+
+    <div class="boutons">
+      <button class="principal" onclick="doDecrypt()">Decrypt</button>
+    </div>
+    <div class="resultat" id="d-out"></div>
+    <p class="msg-info details" id="d-info"></p>
+    <div id="d-extra"></div>
+  </div>
+
+  <!-- ===== CAESAR HISTORY (visible only when Caesar is chosen) ===== -->
+  <div class="bloc" id="historyBloc" style="display:none">
+    <h2>Caesar history</h2>
+    <p class="petit">Every Caesar encryption / decryption is saved (it stays after reloading the page).</p>
+    <div class="table-wrap" id="historyBox"></div>
+    <div class="boutons"><button class="danger" onclick="clearHistory()">Clear history</button></div>
+  </div>
+
+  <!-- ===== HELP ===== -->
+  <details class="bloc">
+    <summary>How each algorithm works</summary>
+    <p><b>Caesar:</b> the alphabet has 52 symbols, <b>a–z then A–Z</b>. Each letter is shifted by <i>k</i> places (key 1 to 51, left or right) and wraps around (z → A, Z → a). Spaces disappear from the encrypted text and come back at decryption. A key like 55 is reduced modulo 52 (→ 3); 0 and 52 are refused (the text would not change).</p>
+    <p><b>Hill (2×2):</b> letters are encrypted two by two with a matrix, modulo 26. Uppercase/lowercase follow the position of each letter (Hello → Hiozhn); the decrypted message is exactly the one sent. The determinant is brought back to 0…25 (negative values handled) and must be coprime with 26. If the number of letters is odd an <b>X</b> is added; the final X is removed when decrypting.</p>
+    <p><b>Playfair:</b> a 5×5 table is built from a secret key (I and J share a cell). The text is cut into pairs (the padding letter is inserted between two equal letters and at the end if the length is odd), then each pair is encrypted with the row / column / rectangle rule. The case of each letter is kept by position.</p>
+    <p><b>Spaces (all algorithms):</b> before encryption each space is replaced by the two letters <code>Qs</code> (and a real q / Q is written <code>Qq</code> / <code>QQ</code>), so the encrypted text contains <b>no spaces</b>. At decryption <code>Qs</code> becomes a space again: <i>Hello World</i> is recovered exactly.</p>
+    <p class="petit">Both sides must use the same algorithm and the same key, otherwise the message is not recovered.</p>
+  </details>
+</main>
+
+<footer>TP SSAD · USTHB · 2026-2027</footer>
+
+<script src="ciphers.js"></script>
+<script src="chiffrement.js"></script>
+</body>
+</html>

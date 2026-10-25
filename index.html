@@ -1,54 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Encryption & Security</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encryption and Security Framework</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="hero">
+    <h1>Encryption and Security Framework</h1>
+    <p class="intro">
+      This site gathers the different parts of our practical work: the encryption and decryption
+      algorithms (Caesar, Hill and Playfair), the three types of passwords, and the verification of the integrity and authenticity of a
+      message. Choose a tab to start.
+    </p>
+  </div>
+</header>
 
-  <body>
-    <header>
-      <div class="hero">
-        <h1>Encryption and Security Framework</h1>
-        <p class="intro">
-          This site brings together the different parts of our lab assignment: the encryption and
-          decryption algorithms (Caesar, Hill, and Playfair), the study of passwords along with 
-          possible attacks and ways to protect against them, as well as the verification of a message's
-          integrity.<br>Choose a tab to get started.
-        </p>
-      </div>
-    </header>
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Encryption</button>
+    <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Password</button>
+    <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Integrity</button>
+  </div>
 
-    <main>
-      <div class="tabs" role="tablist">
-        <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Encryption</button>
-        <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Password</button>
-        <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Integrity</button>
-      </div>
+  <!-- Encryption tab -->
+  <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
+    <a class="bar bar-link" href="chiffrement.html"><span class="bar-head">Encrypt / Decrypt a message (Caesar, Hill, Playfair) <span class="arrow">▶</span></span></a>
+  </section>
 
-      <!-- Onglet Chiffrement -->
-      <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
-        <a class="bar bar-link" href="./Caesar/caesar.html"><span class="bar-head">Caesar <span class="arrow">▶</span></span></a>
-        <a class="bar bar-link" href="./Hill/hill.html"><span class="bar-head">Hill <span class="arrow">▶</span></span></a>
-        <a class="bar bar-link" href="./Playfair/playfair.html"><span class="bar-head">Playfair <span class="arrow">▶</span></span></a>
-      </section>
+  <!-- Password tab -->
+  <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+    <a class="bar bar-link" href="password.html"><span class="bar-head">Password types (generator and check) <span class="arrow">▶</span></span></a>
+  </section>
 
-      <!-- Onglet Mot de passe -->
-      <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
-          <a class="bar bar-link" href="#"><span class="bar-head">Password Generator <span class="arrow">▶</span></span></a>
-          <a class="bar bar-link" href="#"><span class="bar-head">Brute Force Attack <span class="arrow">▶</span></span></a>
-          <a class="bar bar-link" href="#"><span class="bar-head">Directionay Attack <span class="arrow">▶</span></span></a>
-      </section>
+  <!-- Integrity tab -->
+  <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
+    <div class="slot" id="integrite"></div>
+  </section>
+</main>
 
-      <!-- Onglet Intégrité -->
-      <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
-        <div class="slot" id="integrite"></div>
-      </section>
-    </main>
+<footer>TP SSAD · USTHB · 2026-2027</footer>
 
-    <footer>TP SSAD · USTHB · 2026-2027</footer>
-
-    <script src="script.js"></script>
-  </body>
+<script src="script.js"></script>
+</body>
 </html>
