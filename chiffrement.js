@@ -1,11 +1,15 @@
 // ===== USER INTERFACE for chiffrement.html =====
 const $ = function (id) { return document.getElementById(id); };
 
+function blockNegativeKey(event) {
+  if (event.key === "-") event.preventDefault();
+}
+
 // The parameter fields of each algorithm (p = "e" for sender, "d" for receiver)
 function paramsHtml(algo, p) {
   if (algo === "caesar") {
     return '<div class="params"><p class="petit hint">Alphabet a–z then A–Z (52 letters). Key 1 to 51; spaces are hidden in the encrypted text.</p>' +
-      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" value="3"></div>' +
+      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" min="1" value="3" onkeydown="blockNegativeKey(event)"></div>' +
       '<div><label for="' + p + '-cdir">Shift direction</label><select id="' + p + '-cdir"><option value="right">Right</option><option value="left">Left</option></select></div></div></div>';
   }
   if (algo === "hill") {
@@ -85,7 +89,8 @@ function flawsHtml(algo) {
   return h + "</tbody></table></div>";
 }
 
-// ---------- Caesar history (localStorage with in-memory fallback) ----------
+// ---------- Cipher history (localStorage with in-memory fallback) ----------
+// Keep the existing key so previously saved Caesar entries remain available.
 const HKEY = "caesar_history";
 let memory = [];
 function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch (e) { return memory; } }
@@ -96,21 +101,20 @@ function addHistory(entry) {
 }
 function clearHistory() { writeHistory([]); showHistory(); }
 function updateHistoryVisibility() {
-  const on = $("e-algo").value === "caesar" || $("d-algo").value === "caesar";
-  $("historyBloc").style.display = on ? "block" : "none";
-  if (on) showHistory();
+  $("historyBloc").style.display = "block";
+  showHistory();
 }
 function showHistory() {
   const box = $("historyBox"), list = readHistory();
   box.innerHTML = "";
   if (!list.length) { box.innerHTML = '<div class="vide">History is empty.</div>'; return; }
   const table = document.createElement("table"); table.className = "t";
-  table.innerHTML = "<thead><tr><th>Date</th><th>Operation</th><th>Key</th><th>Direction</th><th>Input</th><th>Result</th></tr></thead>";
+  table.innerHTML = "<thead><tr><th>Date</th><th>Algorithm type</th><th>Operation</th><th>Key / parameters</th><th>Direction</th><th>Input</th><th>Result</th></tr></thead>";
   const tb = document.createElement("tbody");
   list.forEach(function (h) {
     const tr = document.createElement("tr");
-    [h.date, h.operation, h.key, h.direction, h.input, h.output].forEach(function (v, i) {
-      const td = document.createElement("td"); td.textContent = v; if (i >= 4) td.className = "mono"; tr.appendChild(td);
+    [h.date, h.algorithm || "Caesar", h.operation, h.key, h.direction || "—", h.input, h.output].forEach(function (v, i) {
+      const td = document.createElement("td"); td.textContent = v; if (i >= 5) td.className = "mono"; tr.appendChild(td);
     });
     tb.appendChild(tr);
   });
@@ -155,7 +159,23 @@ function run(p, mode) {
     const params = readParams(algo, p);
     const r = runCipher(algo, input, params, mode);
     out.textContent = r.text;
-    if (algo === "caesar") addHistory({ operation: mode === "encrypt" ? "Encryption" : "Decryption", key: r.shift, direction: params.direction === "left" ? "Left" : "Right", input: input, output: r.text });
+    const history = {
+      algorithm: algo.charAt(0).toUpperCase() + algo.slice(1),
+      operation: mode === "encrypt" ? "Encryption" : "Decryption",
+      key: "",
+      direction: "—",
+      input: input,
+      output: r.text
+    };
+    if (algo === "caesar") {
+      history.key = r.shift;
+      history.direction = params.direction === "left" ? "Left" : "Right";
+    } else if (algo === "hill") {
+      history.key = "[" + params[0] + ", " + params[1] + "; " + params[2] + ", " + params[3] + "]";
+    } else {
+      history.key = r.key + " (padding: " + r.pad + ")";
+    }
+    addHistory(history);
     info.textContent = (mode === "encrypt" ? "Encrypted" : "Decrypted") + " with " + algo.charAt(0).toUpperCase() + algo.slice(1) + "." + (r.info ? "\n" + r.info : "");
     if (algo === "playfair") extra.innerHTML = tableHtml(r.table, r.key);
     if (p === "e") $("e-send").style.display = "flex";

@@ -6,11 +6,37 @@ const T3 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+*".sp
 
 // dict = dictionary of the attacker, sorted from the most to the least common
 const TYPES = {
-  1: { alphabet: T1, length: 3,    label: '"0" or "1"',                 dict: ["000", "111", "101", "010"] },
-  2: { alphabet: T2, length: 4,    label: '"1", "2", "3" or "4"',       dict: ["1234", "4321", "1111", "2222", "3333", "4444", "1212", "2121", "1122", "3412"] },
+  1: { alphabet: T1, length: 3,    label: '"0" or "1"',                 dict: ["000", "111", "101", "010", "001", "011", "100", "110"] },
+  2: { alphabet: T2, length: 4,    label: '"1", "2", "3" or "4"',       dict: ["1234", "4321", "1111", "2222", "3333", "4444", "1212", "2121", "1122", "3412", "1342", "2143", "1243", "1324", "1423", "1432", "2134", "2314", "2341", "2413", "2431", "3124", "3142", "3214", "3241", "3421", "4123", "4132", "4213", "4231", "4312", "1221", "2112", "3443", "4334", "1231", "2342", "3413", "4124", "1431"] },
   3: { alphabet: T3, length: null, label: "a-z, A-Z, 0-9, + or *",
        dict: ["123456", "password", "12345678", "qwerty", "azerty", "abc123", "admin", "letmein", "welcome", "football",
-              "monkey", "dragon", "master", "Passw0rd", "Password1", "iloveyou", "sunshine", "123456789", "111111", "Admin123"] }
+              "monkey", "dragon", "master", "Passw0rd", "Password1", "iloveyou", "sunshine", "123456789", "111111", "Admin123",
+              "12345", "1234567", "1234567890", "123123", "000000", "654321", "987654321", "qwertyuiop", "qwerty123", "qwerty1",
+              "password1", "Password", "passw0rd", "pass123", "admin123", "admin1", "administrator", "root", "root123", "user",
+              "user123", "test", "test123", "guest", "guest123", "login", "login123", "welcome1", "welcome123", "hello",
+              "hello123", "hello1", "changeme", "default", "secret", "secret123", "access", "access123", "manager", "manager123",
+              "superman", "batman", "spiderman", "starwars", "pokemon", "naruto", "michael", "jennifer", "jessica", "daniel",
+              "robert", "thomas", "charlie", "george", "computer", "internet", "service", "server", "database", "security",
+              "summer", "summer1", "summer123", "winter", "winter1", "spring", "spring1", "autumn", "freedom", "whatever",
+              "trustno1", "princess", "princess1", "baseball", "basketball", "soccer", "hockey", "liverpool", "chelsea", "arsenal",
+              "barcelona", "realmadrid", "mercedes", "mustang", "harley", "matrix", "tigger", "ginger", "pepper", "cookie",
+              "maggie", "bailey", "buster", "shadow", "snoopy", "jordan", "jordan23", "donald", "michelle", "andrew",
+              "joshua", "matthew", "anthony", "william", "richard", "christopher", "samantha", "amanda", "melissa", "nicole",
+              "victoria", "andrea", "jasmine", "flower", "flowers", "butterfly", "angel", "angels", "diamond", "rainbow",
+              "coffee", "chocolate", "strawberry", "banana", "orange", "apple", "cheese", "pizza", "london", "paris",
+              "france", "england", "america", "canada", "algeria", "usthb", "school", "student", "teacher", "education",
+              "lovely", "beautiful", "sweetheart", "honey", "babygirl", "babyboy", "loveme", "forever", "family", "friends",
+              "friendship", "guitar", "music", "music123", "dance", "movie", "movies", "book", "books", "reading",
+              "dream", "dreams", "happy", "smile", "lucky", "winner", "winner1", "killer", "hunter", "ranger",
+              "warrior", "knight", "wizard", "magic", "ninja", "pirate", "eagle", "tiger", "lion", "wolf",
+              "kitty", "cat123", "dog123", "horse", "rabbit", "dolphin", "shark", "flower1", "garden", "nature",
+              "sunset", "sunrise", "moonlight", "starlight", "blue", "black", "white", "red", "green", "purple",
+              "silver", "gold", "golden", "orange1", "pink", "violet", "1234", "12345", "123456789", "1q2w3e4r",
+              "1qaz2wsx", "qazwsx", "zxcvbn", "asdfgh", "asdf123", "abc", "abcd", "abcdef", "abcdefg", "abcdefgh",
+              "password123", "Password123", "passw0rd1", "P+ssword", "P*ssw0rd", "Aa123456", "Aa12345678", "Qwerty123", "Qwerty1", "Welcome1",
+              "Welcome123", "Admin", "Admin1", "Admin1234", "Root123", "Test1234", "Hello123", "Love123", "Starwars", "Football1",
+              "Monkey123", "Dragon123", "Master123", "Summer2024", "Winter2024", "April", "January", "October", "December", "November",
+              "March", "May123", "June123", "July123", "August", "September", "2024", "2025", "2026", "0000"] }
 };
 
 // ---------- Secure random (crypto, not Math.random) ----------
@@ -75,6 +101,29 @@ function dictionaryAttack(target, type) {
   return { found: found, tries: tries, ms: performance.now() - t0 };
 }
 
+// ---------- PART 3: full dictionary attack ----------
+// Minimal-time rules: build the list before timing, compare strings directly, and stop at the first match.
+
+// Builds one ordered, duplicate-free candidate list from every built-in and user-supplied word.
+function buildFullDictionary(type, customText) {
+  const base = TYPES[type].dict.slice();
+  const extra = String(customText || "").split(/\r?\n/)
+    .map(function (word) { return word.trim(); })
+    .filter(function (word) { return word.length > 0; });
+  return Array.from(new Set(base.concat(extra)));
+}
+
+// Searches an already-built word list, measuring only the search loop and exiting as soon as it finds a match.
+function dictionaryAttackFull(target, wordlist) {
+  const t0 = performance.now();
+  for (let i = 0; i < wordlist.length; i++) {
+    if (wordlist[i] === target) {
+      return { found: true, password: wordlist[i], tries: i + 1, ms: performance.now() - t0, dictSize: wordlist.length };
+    }
+  }
+  return { found: false, password: null, tries: wordlist.length, ms: performance.now() - t0, dictSize: wordlist.length };
+}
+
 // ---------- ATTACK 2: brute force (minimal work) ----------
 //  - Types 1 and 2: the length is known, so only that length is enumerated (8 or 256 candidates).
 //  - Type 3: the length is unknown, so lengths 1, 2, 3... are tried in order (shortest first).
@@ -105,11 +154,32 @@ function bruteForce(target, type, budgetMs) {
   return { found: false, tries: tries, ms: performance.now() - t0, timedOut: false };
 }
 
+// Converts text to a hexadecimal SHA-256 hash for the protection demonstration.
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
+}
+
+// Creates a cryptographically random salt so the same password does not always have the same stored hash.
+function generateSalt() {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
+}
+
+// Returns the salt and salted hash that would be stored instead of a plain password.
+async function protectPassword(password) {
+  const salt = generateSalt();
+  const hash = await sha256Hex(password + salt);
+  return { salt: salt, hash: hash };
+}
+
 // Worst-case time to exhaust the space of length L at `rate` tries per second
 function worstCase(base, L, rate) { return Math.pow(base, L) / rate; }
 
 if (typeof module !== "undefined") {
-  module.exports = { TYPES, checkPwd, dictionaryAttack, bruteForce, fmtDuration, worstCase, randomPassword };
+  module.exports = { TYPES, checkPwd, dictionaryAttack, buildFullDictionary, dictionaryAttackFull, bruteForce, fmtDuration, worstCase, randomPassword, sha256Hex, generateSalt, protectPassword };
 }
 
 // ===== USER INTERFACE (browser only) =====
@@ -162,6 +232,67 @@ if (typeof document !== "undefined") {
         "<td>" + (d.found ? "<b>found</b> in " + d.tries + " tries" : "not found") + " (" + fmtMs(d.ms) + ")</td><td>" + bf + "</td></tr>");
     }
     $("resAttacks").innerHTML = table(["Password", "Combinations", "Dictionary attack", "Brute force"], rows);
+  };
+
+  // Generates a target for the selected type and resets the state of the two demonstrations.
+  window.generateDictionaryTarget = function () {
+    const type = Number($("dict-type-select").value);
+    $("dict-target").value = randomFor(type);
+    $("dict-result").innerHTML = "";
+    $("dict-protection-result").className = "resultat";
+    $("dict-protection-result").innerHTML = "";
+  };
+
+  // Builds the list once, then runs the fast dictionary search and displays the outcome and first attempts.
+  window.runDictionaryInterface = function () {
+    const type = Number($("dict-type-select").value);
+    const target = $("dict-target").value;
+    const custom = $("dict-custom").value;
+    const box = $("dict-result");
+    if (!target) {
+      box.innerHTML = "<div class='resultat erreur'>Enter or generate a target password first.</div>";
+      return;
+    }
+
+    const wordlist = buildFullDictionary(type, custom); // This setup is deliberately outside the timed search.
+    const validity = checkPwd(target, type);
+    const r = dictionaryAttackFull(target, wordlist);
+    const preview = wordlist.slice(0, Math.min(r.tries, 20));
+    const attemptRows = preview.map(function (word, index) {
+      const status = r.found && index + 1 === r.tries ? "<span class='tag ok'>Match</span>" : "";
+      return "<tr><td>" + (index + 1) + "</td><td class='mono'>" + esc(word) + "</td><td>" + status + "</td></tr>";
+    });
+    const shown = preview.length;
+    const detailsTitle = "Showing first " + shown + " of " + fmtBig(r.tries) + " attempted word" + (r.tries === 1 ? "" : "s") + " (dictionary: " + fmtBig(r.dictSize) + " words)";
+    const ruleNote = validity.ok
+      ? "The target matches the selected Type " + type + " rules."
+      : "Target note: " + esc(validity.reason);
+
+    box.innerHTML = "<div class='resultat'>" +
+      (r.found ? "<span class='tag ok'>Found</span><br>Password found: <b>" + esc(r.password) + "</b><br>" : "<span class='tag'>Not found</span><br>") +
+      "Attempts: " + fmtBig(r.tries) + "<br>Time taken: " + fmtMs(r.ms) + "<br>Dictionary size: " + fmtBig(r.dictSize) + " unique candidate(s)</div>" +
+      "<p class='petit'>" + ruleNote + "</p>" +
+      "<details><summary>" + detailsTitle + "</summary>" +
+      table(["#", "Attempted word", "Status"], attemptRows) + "</details>";
+  };
+
+  // Hashes the current target with a new random salt and displays only values suitable for storage.
+  window.protectDictionaryPassword = async function () {
+    const password = $("dict-target").value;
+    const box = $("dict-protection-result");
+    if (!password) {
+      box.className = "resultat erreur";
+      box.textContent = "Enter or generate a target password first.";
+      return;
+    }
+    try {
+      const protectedValue = await protectPassword(password);
+      box.className = "resultat";
+      box.innerHTML = "<b>Stored values (not the password)</b><br>Salt: " + esc(protectedValue.salt) + "<br>SHA-256 hash: " + esc(protectedValue.hash);
+    } catch (error) {
+      box.className = "resultat erreur";
+      box.textContent = "This browser could not create a SHA-256 hash: " + error.message;
+    }
   };
 
   updateCombo3();

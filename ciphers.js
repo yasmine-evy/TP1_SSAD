@@ -181,7 +181,7 @@ function runPlayfair(raw, p, mode) {
     out = composeLayout(letters.join(""), prefix, carry + lay.suffix);
     if (p.removePad) notes.push("Padding letters (" + pad + ") removed.");
   }
-  return { text: out, info: notes.join("\n"), table: table, key: key };
+  return { text: out, info: notes.join("\n"), table: table, key: key, pad: pad };
 }
 
 // ---------- SPACES: hidden in the ciphertext, restored at decryption ----------
