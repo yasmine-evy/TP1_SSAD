@@ -294,6 +294,71 @@ if (typeof document !== "undefined") {
       box.textContent = "This browser could not create a SHA-256 hash: " + error.message;
     }
   };
+  //  BRUTE FORCE & PROTECTIONS =====
+
+// 2. Interface pour exécuter le Brute Force optimisé
+window.runBruteForceInterface = function () {
+  const type = Number($("bf-type-select").value);
+  const target = $("bf-target").value;
+  const box = $("bf-result");
+
+  if (!target) {
+    box.innerHTML = "<div class='resultat erreur'>Veuillez d'abord entrer ou générer un mot de passe cible.</div>";
+    return;
+  }
+
+  const validity = checkPwd(target, type);
+  // Appel de la fonction bruteForce existante dans password.js (budget de 2000ms max)
+  const b = bruteForce(target, type, 2000);
+  const space = Math.pow(TYPES[type].alphabet.length, target.length);
+
+  box.innerHTML = "<div class='resultat'>" +
+    (b.found ? "<span class='tag ok'>Trouvé !</span><br>Mot de passe trouvé : <b>" + esc(target) + "</b><br>" : "<span class='tag'>Délai dépassé / Non trouvé</span><br>") +
+    "Essais réalisés : " + fmtBig(b.tries) + "<br>" +
+    "Temps d'exécution : " + fmtMs(b.ms) + "<br>" +
+    "Espace total des combinaisons : " + fmtBig(space) + "</div>";
+};
+
+// 3. Logique de protection (Tentatives, Throttling, Blocage)
+let bfAttempts = 0;
+let bfLockoutUntil = 0;
+const BF_MAX_ATTEMPTS = 3;
+const BF_LOCKOUT_TIME = 10000; // 10 secondes de blocage
+
+window.testLoginAttempt = function () {
+  const inputPwd = $("bf-login-pwd").value;
+  const targetPwd = $("bf-target").value || "101"; // Mot de passe par défaut si vide
+  const resBox = $("bf-login-result");
+  const now = Date.now();
+
+  // Vérifier le blocage temporaire (Lockout)
+  if (now < bfLockoutUntil) {
+    const remainingSec = Math.ceil((bfLockoutUntil - now) / 1000);
+    resBox.className = "resultat erreur";
+    resBox.textContent = `Accès bloqué suite à trop d'échecs. Réessayez dans ${remainingSec} seconde(s).`;
+    return;
+  }
+
+  // Vérification du mot de passe
+  if (inputPwd === targetPwd) {
+    bfAttempts = 0; // Remise à zéro en cas de succès
+    resBox.className = "resultat";
+    resBox.innerHTML = "<span class='tag ok'>Succès</span> Connexion autorisée. Compteur de tentatives réinitialisé.";
+  } else {
+    bfAttempts++;
+    const attemptsLeft = BF_MAX_ATTEMPTS - bfAttempts;
+    
+    if (bfAttempts >= BF_MAX_ATTEMPTS) {
+      bfLockoutUntil = Date.now() + BF_LOCKOUT_TIME;
+      bfAttempts = 0;
+      resBox.className = "resultat erreur";
+      resBox.textContent = `Trop de tentatives incorrectes (${BF_MAX_ATTEMPTS}/${BF_MAX_ATTEMPTS}). Compte bloqué pendant 10 secondes !`;
+    } else {
+      resBox.className = "resultat erreur";
+      resBox.textContent = `Mot de passe incorrect. Tentatives restantes avant blocage : ${attemptsLeft}`;
+    }
+  }
+};
 
   updateCombo3();
 }
