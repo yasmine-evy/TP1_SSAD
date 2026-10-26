@@ -72,8 +72,19 @@ function checkPwd(pwd, type) {
                fix: 'Replace character #' + (i + 1) + ' by one of: ' + (type === 3 ? "a-z, A-Z, 0-9, +, *" : allowed) + "." };
   }
   let reason = "Valid Type " + type + " password: " + pwd.length + " character(s), all from " + t.label + ".";
-  if (t.dict.includes(pwd)) reason += "  ⚠ But this password is in the common-password dictionary: a dictionary attack finds it immediately. Choose another one.";
-  return { ok: true, reason: reason, fix: "" };
+  return { ok: true, reason: reason, fix: "", commonPassword: isCommonPassword(pwd, type) };
+}
+
+function isCommonPassword(password, type) {
+  const normalized = password.toLowerCase();
+  return TYPES[type].dict.some(function (candidate) { return candidate.toLowerCase() === normalized; });
+}
+
+function isInCommonPasswordDictionary(password) {
+  const normalized = password.toLowerCase();
+  return Object.keys(TYPES).some(function (type) {
+    return TYPES[type].dict.some(function (candidate) { return candidate.toLowerCase() === normalized; });
+  });
 }
 
 // ---------- Formatting ----------
@@ -154,32 +165,11 @@ function bruteForce(target, type, budgetMs) {
   return { found: false, tries: tries, ms: performance.now() - t0, timedOut: false };
 }
 
-// Converts text to a hexadecimal SHA-256 hash for the protection demonstration.
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest)).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
-}
-
-// Creates a cryptographically random salt so the same password does not always have the same stored hash.
-function generateSalt() {
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
-}
-
-// Returns the salt and salted hash that would be stored instead of a plain password.
-async function protectPassword(password) {
-  const salt = generateSalt();
-  const hash = await sha256Hex(password + salt);
-  return { salt: salt, hash: hash };
-}
-
 // Worst-case time to exhaust the space of length L at `rate` tries per second
 function worstCase(base, L, rate) { return Math.pow(base, L) / rate; }
 
 if (typeof module !== "undefined") {
-  module.exports = { TYPES, checkPwd, dictionaryAttack, buildFullDictionary, dictionaryAttackFull, bruteForce, fmtDuration, worstCase, randomPassword, sha256Hex, generateSalt, protectPassword };
+  module.exports = { TYPES, checkPwd, isCommonPassword, isInCommonPasswordDictionary, dictionaryAttack, buildFullDictionary, dictionaryAttackFull, bruteForce, fmtDuration, worstCase, randomPassword };
 }
 
 // ===== USER INTERFACE (browser only) =====
@@ -201,9 +191,18 @@ if (typeof document !== "undefined") {
     const r = checkPwd($("pwd" + type).value, type);
     const res = $("res" + type);
     res.style.whiteSpace = "pre-line";
-    res.textContent = r.ok ? "✔ ACCEPTED — " + r.reason
-                           : "✘ REFUSED — " + r.reason + "\nWhat to do: " + r.fix;
-    res.className = "resultat" + (r.ok ? "" : " erreur");
+    if (!r.ok) {
+      res.textContent = "✘ REFUSED — " + r.reason + "\nWhat to do: " + r.fix;
+      res.className = "resultat erreur";
+    } else if (r.commonPassword) {
+      res.textContent = "✔ Valid Type " + type + " password — " + r.reason +
+        "\n⚠ This password is in our demonstration common-password list and is vulnerable to dictionary attacks. Choose a stronger password.";
+      res.className = "resultat erreur";
+    } else {
+      res.textContent = "✔ ACCEPTED — " + r.reason +
+        "\nNot found in our demonstration common-password list; this does not guarantee that the password is secure.";
+      res.className = "resultat";
+    }
     res.style.letterSpacing = "0"; res.style.fontSize = ".95rem"; res.style.fontFamily = "inherit";
   };
   window.updateCombo3 = function () {
@@ -239,8 +238,23 @@ if (typeof document !== "undefined") {
     const type = Number($("dict-type-select").value);
     $("dict-target").value = randomFor(type);
     $("dict-result").innerHTML = "";
-    $("dict-protection-result").className = "resultat";
-    $("dict-protection-result").innerHTML = "";
+  };
+
+  window.checkCommonPasswordDictionary = function () {
+    const password = $("common-password-check").value;
+    const box = $("common-password-check-result");
+    if (!password) {
+      box.className = "resultat erreur";
+      box.textContent = "Enter a password to check.";
+      return;
+    }
+    if (isInCommonPasswordDictionary(password)) {
+      box.className = "resultat erreur";
+      box.textContent = "This password appears in the demonstration dictionaries and may be vulnerable to dictionary attacks. Choose a stronger password.";
+    } else {
+      box.className = "resultat";
+      box.textContent = "This password was not found in the demonstration dictionaries. This does not guarantee that it is secure.";
+    }
   };
 
   // Builds the list once, then runs the fast dictionary search and displays the outcome and first attempts.
@@ -276,24 +290,6 @@ if (typeof document !== "undefined") {
       table(["#", "Attempted word", "Status"], attemptRows) + "</details>";
   };
 
-  // Hashes the current target with a new random salt and displays only values suitable for storage.
-  window.protectDictionaryPassword = async function () {
-    const password = $("dict-target").value;
-    const box = $("dict-protection-result");
-    if (!password) {
-      box.className = "resultat erreur";
-      box.textContent = "Enter or generate a target password first.";
-      return;
-    }
-    try {
-      const protectedValue = await protectPassword(password);
-      box.className = "resultat";
-      box.innerHTML = "<b>Stored values (not the password)</b><br>Salt: " + esc(protectedValue.salt) + "<br>SHA-256 hash: " + esc(protectedValue.hash);
-    } catch (error) {
-      box.className = "resultat erreur";
-      box.textContent = "This browser could not create a SHA-256 hash: " + error.message;
-    }
-  };
   //  BRUTE FORCE & PROTECTIONS =====
 
 // 2. Interface pour exécuter le Brute Force optimisé
@@ -319,46 +315,156 @@ window.runBruteForceInterface = function () {
     "Espace total des combinaisons : " + fmtBig(space) + "</div>";
 };
 
-// 3. Logique de protection (Tentatives, Throttling, Blocage)
 let bfAttempts = 0;
 let bfLockoutUntil = 0;
-const BF_MAX_ATTEMPTS = 3;
-const BF_LOCKOUT_TIME = 10000; // 10 secondes de blocage
+let loginCountdown = null;
+const BF_MAX_ATTEMPTS = 5;
+const BF_LOCKOUT_TIME = 10000;
+
+function showLoginLockout() {
+  const resBox = $("bf-login-result");
+  const button = $("login-demo-button");
+  const remainingSec = Math.max(0, Math.ceil((bfLockoutUntil - Date.now()) / 1000));
+  if (remainingSec === 0) {
+    clearInterval(loginCountdown);
+    loginCountdown = null;
+    bfAttempts = 0;
+    bfLockoutUntil = 0;
+    button.disabled = false;
+    resBox.className = "resultat";
+    resBox.textContent = "Waiting period ended. You may try again; 5 attempts are available.";
+    return;
+  }
+  button.disabled = true;
+  resBox.className = "resultat erreur";
+  resBox.textContent = "Temporarily blocked after too many failed attempts. Try again in " +
+    remainingSec + " second(s).";
+}
 
 window.testLoginAttempt = function () {
   const inputPwd = $("bf-login-pwd").value;
-  const targetPwd = $("bf-target").value || "101"; // Mot de passe par défaut si vide
+  const targetPwd = $("login-demo-password").value;
   const resBox = $("bf-login-result");
   const now = Date.now();
 
-  // Vérifier le blocage temporaire (Lockout)
   if (now < bfLockoutUntil) {
-    const remainingSec = Math.ceil((bfLockoutUntil - now) / 1000);
+    showLoginLockout();
+    return;
+  }
+  if (bfLockoutUntil) {
+    clearInterval(loginCountdown);
+    loginCountdown = null;
+    bfLockoutUntil = 0;
+    bfAttempts = 0;
+  }
+  if (!targetPwd) {
     resBox.className = "resultat erreur";
-    resBox.textContent = `Accès bloqué suite à trop d'échecs. Réessayez dans ${remainingSec} seconde(s).`;
+    resBox.textContent = "Set a demo account password before trying to log in.";
+    return;
+  }
+  if (!inputPwd) {
+    resBox.className = "resultat erreur";
+    resBox.textContent = "Enter a password to try.";
     return;
   }
 
-  // Vérification du mot de passe
   if (inputPwd === targetPwd) {
-    bfAttempts = 0; // Remise à zéro en cas de succès
+    bfAttempts = 0;
     resBox.className = "resultat";
-    resBox.innerHTML = "<span class='tag ok'>Succès</span> Connexion autorisée. Compteur de tentatives réinitialisé.";
+    resBox.textContent = "Login successful. The failed-attempt counter has been reset; 5 attempts are available.";
   } else {
     bfAttempts++;
     const attemptsLeft = BF_MAX_ATTEMPTS - bfAttempts;
-    
     if (bfAttempts >= BF_MAX_ATTEMPTS) {
-      bfLockoutUntil = Date.now() + BF_LOCKOUT_TIME;
-      bfAttempts = 0;
-      resBox.className = "resultat erreur";
-      resBox.textContent = `Trop de tentatives incorrectes (${BF_MAX_ATTEMPTS}/${BF_MAX_ATTEMPTS}). Compte bloqué pendant 10 secondes !`;
+      bfLockoutUntil = now + BF_LOCKOUT_TIME;
+      showLoginLockout();
+      loginCountdown = setInterval(showLoginLockout, 250);
     } else {
       resBox.className = "resultat erreur";
-      resBox.textContent = `Mot de passe incorrect. Tentatives restantes avant blocage : ${attemptsLeft}`;
+      resBox.textContent = "Incorrect password. " + attemptsLeft + " attempt(s) remaining before the temporary delay.";
     }
   }
 };
+
+$("login-demo-password").addEventListener("input", function () {
+  bfAttempts = 0;
+  bfLockoutUntil = 0;
+  if (loginCountdown !== null) {
+    clearInterval(loginCountdown);
+    loginCountdown = null;
+  }
+  $("login-demo-button").disabled = false;
+  $("bf-login-result").textContent = "Demo account password changed; 5 attempts are available.";
+  $("bf-login-result").className = "resultat";
+});
+
+let bruteProtectionAttempts = 0;
+let bruteProtectionLockoutUntil = 0;
+let bruteProtectionCountdown = null;
+const BRUTE_PROTECTION_MAX_ATTEMPTS = 3;
+const BRUTE_PROTECTION_LOCKOUT_TIME = 10000;
+
+function updateBruteProtectionLockout() {
+  const result = $("bf-protection-result");
+  const button = $("bf-protection-button");
+  const secondsLeft = Math.max(0, Math.ceil((bruteProtectionLockoutUntil - Date.now()) / 1000));
+  if (secondsLeft === 0) {
+    clearInterval(bruteProtectionCountdown);
+    bruteProtectionCountdown = null;
+    bruteProtectionAttempts = 0;
+    bruteProtectionLockoutUntil = 0;
+    button.disabled = false;
+    result.className = "resultat";
+    result.textContent = "The waiting period has ended. You may try again.";
+    return;
+  }
+  button.disabled = true;
+  result.className = "resultat erreur";
+  result.textContent = "Temporarily blocked after too many failed attempts. Try again in " +
+    secondsLeft + " second(s).";
+}
+
+window.testBruteForceProtection = function () {
+  const target = $("bf-protection-target").value;
+  const candidate = $("bf-protection-password").value;
+  const result = $("bf-protection-result");
+  const now = Date.now();
+
+  if (now < bruteProtectionLockoutUntil) {
+    updateBruteProtectionLockout();
+    return;
+  }
+  if (!target) {
+    result.className = "resultat erreur";
+    result.textContent = "Set a demo account password before trying to log in.";
+    return;
+  }
+  if (!candidate) {
+    result.className = "resultat erreur";
+    result.textContent = "Enter a password to try.";
+    return;
+  }
+
+  if (candidate === target) {
+    bruteProtectionAttempts = 0;
+    result.className = "resultat";
+    result.textContent = "Login successful. The failed-attempt counter has been reset.";
+    return;
+  }
+
+  bruteProtectionAttempts++;
+  const remaining = BRUTE_PROTECTION_MAX_ATTEMPTS - bruteProtectionAttempts;
+  if (remaining === 0) {
+    bruteProtectionLockoutUntil = now + BRUTE_PROTECTION_LOCKOUT_TIME;
+    updateBruteProtectionLockout();
+    bruteProtectionCountdown = setInterval(updateBruteProtectionLockout, 250);
+    return;
+  }
+  result.className = "resultat erreur";
+  result.textContent = "Incorrect password. " + remaining + " attempt(s) remaining before the temporary block.";
+};
+
+  updateCombo3();
 
   updateCombo3();
 }
