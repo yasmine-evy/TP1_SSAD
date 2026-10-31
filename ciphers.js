@@ -24,18 +24,18 @@ function letterCases(t) { return t.replace(/[^A-Za-z]/g, "").split("").map(funct
 function applyCases(s, ups) { return s.split("").map(function (ch, i) { return ups[i] === false ? ch.toLowerCase() : ch.toUpperCase(); }).join(""); }
 function cleanLetters(t) { return t.toUpperCase().replace(/[^A-Z]/g, ""); }
 
-// ---------- CAESAR (alphabet a-z then A-Z: 52 symbols) ----------
-const CAESAR_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const N = CAESAR_ALPHABET.length;   // 52
-function mod52(x) { return ((x % N) + N) % N; }
+// ---------- CAESAR (two alphabets of 26 letters: a-z and A-Z, key 1 to 25) ----------
+// Lowercase letters stay lowercase, uppercase stay uppercase; the shift wraps inside each alphabet (z -> a, Z -> A).
+// A key of 26 (or 0) is a full turn: the message would not be encrypted, so it is refused. Only 1 to 25 is accepted.
+const N = 26;
 function removeSpaces(t) { return t.replace(/\s+/g, ""); }
 
 function checkCaesarKey(raw) {
   const k = Number(raw);
-  if (String(raw).trim() === "" || !Number.isInteger(k)) throw new Error("Caesar: the key must be an integer.");
-  const r = mod52(k);
-  if (r === 0) throw new Error("Caesar: key " + k + " refused. Shifting by 0 or " + N + " (a full turn of the alphabet) leaves the text unchanged. Choose a key from 1 to " + (N - 1) + ".");
-  return { shift: r, note: r !== k ? "Key " + k + " reduced to " + r + " (modulo " + N + ")." : "" };
+  if (String(raw).trim() === "" || !Number.isInteger(k)) throw new Error("Caesar: the key must be a whole number from 1 to 25.");
+  if (k === 0 || k === 26) throw new Error("Caesar: error, key " + k + " refused. A shift of " + k + " is a full turn of the alphabet: the message would not be encrypted. Choose a key from 1 to 25.");
+  if (k < 1 || k > 25) throw new Error("Caesar: key " + k + " refused. The key must be between 1 and 25.");
+  return { shift: k, note: "" };
 }
 
 function caesar(text, shift, direction, mode) {
@@ -43,8 +43,10 @@ function caesar(text, shift, direction, mode) {
   if (mode === "decrypt") eff = -eff;
   let out = "";
   for (const ch of text) {
-    const i = CAESAR_ALPHABET.indexOf(ch);
-    out += i === -1 ? ch : CAESAR_ALPHABET[mod52(i + eff)];   // z → A, Z → a
+    const c = ch.charCodeAt(0);
+    if (c >= 97 && c <= 122) out += String.fromCharCode(97 + ((c - 97 + eff) % N + N) % N);
+    else if (c >= 65 && c <= 90) out += String.fromCharCode(65 + ((c - 65 + eff) % N + N) % N);
+    else out += ch;
   }
   return out;
 }
@@ -53,9 +55,7 @@ function runCaesar(raw, p, mode) {
   const msg = raw;                               // spaces and punctuation are kept as they are
   if (!/[A-Za-z]/.test(msg)) throw new Error("Please enter a message containing letters.");
   const key = checkCaesarKey(p.key);
-  const notes = [];
-  if (key.note) notes.push(key.note);
-  return { text: caesar(msg, key.shift, p.direction, mode), info: notes.join("\n"), shift: key.shift };
+  return { text: caesar(msg, key.shift, p.direction, mode), info: "", shift: key.shift };
 }
 
 // ---------- HILL 2x2 ----------

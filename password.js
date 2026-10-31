@@ -54,17 +54,19 @@ function randomPassword(alphabet, len) {
 
 // ---------- Validation ----------
 // Returns { ok, reason, fix }: fix = what the user must do when the password is refused.
-function checkPwd(pwd, type) {
+function checkPwd(pwd, type, len3) {
   const t = TYPES[type];
+  const need = t.length !== null ? t.length : (len3 || null);   // Type 3: the length chosen by the user
   const allowed = t.alphabet.join(", ");
+  const chosen = t.length === null && need !== null ? " (the length you chose)" : "";
   if (pwd.length === 0)
-    return { ok: false, reason: "The field is empty.", fix: "Type your password" + (t.length !== null ? " (exactly " + t.length + " characters)" : "") + ", or click Generate." };
-  if (t.length !== null && pwd.length !== t.length) {
-    const diff = Math.abs(t.length - pwd.length);
-    return { ok: false, reason: "Wrong length: must be exactly " + t.length + " characters, but you entered " + pwd.length + ".",
-             fix: (pwd.length < t.length ? "Add " : "Remove ") + diff + " character(s)." };
+    return { ok: false, reason: "The field is empty.", fix: "Type your password" + (need !== null ? " (exactly " + need + " characters)" : "") + ", or click Generate." };
+  if (need !== null && pwd.length !== need) {
+    const diff = Math.abs(need - pwd.length);
+    return { ok: false, reason: "Wrong length: must be exactly " + need + " characters" + chosen + ", but you entered " + pwd.length + ".",
+             fix: (pwd.length < need ? "Add " : "Remove ") + diff + " character(s)" + (t.length === null ? ", or change the Length field." : ".") };
   }
-  if (t.length === null && pwd.length > 32)
+  if (need === null && pwd.length > 32)
     return { ok: false, reason: "Too long: " + pwd.length + " characters (maximum 32).", fix: "Remove " + (pwd.length - 32) + " character(s)." };
   for (let i = 0; i < pwd.length; i++) {
     if (!t.alphabet.includes(pwd[i]))
@@ -101,19 +103,79 @@ function fmtDuration(sec) {
 function fmtMs(ms) { return ms < 0.01 ? "< 0.01 ms" : ms.toFixed(2) + " ms"; }
 function fmtBig(n) { return n < 1e6 ? n.toLocaleString("en-US") : n.toExponential(2); }
 
-// ---------- Attacks, used only by the tests of part 1 (interfaces + protections: parts 2 and 3) ----------
-// ATTACK 1: dictionary ----------
-// Tries the list in order (most common first) and stops at the first match.
-function dictionaryAttack(target, type) {
-  const list = TYPES[type].dict;
-  const t0 = performance.now();
-  let tries = 0, found = false;
-  for (const w of list) { tries++; if (w === target) { found = true; break; } }
-  return { found: found, tries: tries, ms: performance.now() - t0 };
+const ALGO_NAMES = { caesar: "Caesar", hill: "Hill", playfair: "Playfair" };
+// Default keys valid for the alphabets of the 3 types (a Hill matrix with an odd determinant is valid modulo 2, 4 and 64)
+const DEFAULT_KEYS = {
+  1: { caesar: 3, hill: [1, 1, 0, 1], playfair: "1" },
+  2: { caesar: 3, hill: [1, 2, 3, 3], playfair: "3142" },
+  3: { caesar: 3, hill: [3, 3, 2, 5], playfair: "Secret+Key*" }
+};
+
+function symbolMap(alphabet) { const m = new Map(); alphabet.forEach(function (s, i) { m.set(s, i); }); return m; }
+
+// Turns the words of a list into index arrays (done BEFORE the timed search). Words with a forbidden symbol are skipped.
+function prepareCandidates(words, alphabet) {
+  const map = symbolMap(alphabet), kept = [], idx = [];
+  let skipped = 0, maxLen = 1;
+  for (let w = 0; w < words.length; w++) {
+    const word = words[w], arr = new Int32Array(word.length);
+    let ok = word.length > 0;
+    for (let i = 0; ok && i < word.length; i++) { const k = map.get(word[i]); if (k === undefined) ok = false; else arr[i] = k; }
+    if (!ok) { skipped++; continue; }
+    kept.push(word); idx.push(arr); if (word.length > maxLen) maxLen = word.length;
+  }
+  return { words: kept, idx: idx, skipped: skipped, maxLen: maxLen };
 }
 
-// ---------- PART 3: full dictionary attack ----------
-// Minimal-time rules: build the list before timing, compare strings directly, and stop at the first match.
+function sameIdx(out, ol, target) {
+  if (ol !== target.length) return false;
+  for (let k = 0; k < ol; k++) if (out[k] !== target[k]) return false;
+  return true;
+}
+
+// ---------- ATTACK 1: dictionary against an ENCRYPTED password ----------
+// For each word (most common first): encrypt it with the same algorithm and key, compare with the stolen value.
+// Stops at the first match. Only this loop is timed.
+function dictionaryAttackEnc(targetIdx, cands, cipher) {
+  const out = new Int32Array(2 * cands.maxLen + 4), n = cands.idx.length;
+  const t0 = performance.now();
+  for (let i = 0; i < n; i++) {
+    const w = cands.idx[i];
+    if (sameIdx(out, cipher.encIdx(w, w.length, out), targetIdx))
+      return { found: true, password: cands.words[i], tries: i + 1, ms: performance.now() - t0, dictSize: n };
+  }
+  return { found: false, password: null, tries: n, ms: performance.now() - t0, dictSize: n };
+}
+
+// ---------- ATTACK 2: brute force against an ENCRYPTED password ----------
+//  - The length is known by the policy (3, 4, or the length chosen for Type 3): only that length is enumerated.
+//  - Without a known length: lengths 1, 2, 3... are tried in order (shortest first).
+// An "odometer" counter enumerates the candidates; each one is encrypted and compared. Stops after budgetMs.
+function bruteForceEnc(targetIdx, type, cipher, budgetMs, len3) {
+  const t = TYPES[type], A = t.alphabet, base = A.length;
+  const fixed = t.length !== null ? t.length : (len3 || null);   // the length required by the policy
+  const minLen = fixed !== null ? fixed : 1;
+  const maxLen = fixed !== null ? fixed : 32;
+  const out = new Int32Array(2 * maxLen + 4);
+  const t0 = performance.now();
+  let tries = 0;
+  for (let L = minLen; L <= maxLen; L++) {
+    const idx = new Int32Array(L);
+    for (;;) {
+      tries++;
+      if (sameIdx(out, cipher.encIdx(idx, L, out), targetIdx)) {
+        let pw = ""; for (let i = 0; i < L; i++) pw += A[idx[i]];
+        return { found: true, password: pw, tries: tries, ms: performance.now() - t0, timedOut: false };
+      }
+      let p = L - 1;
+      while (p >= 0 && ++idx[p] === base) { idx[p] = 0; p--; }
+      if (p < 0) break;                                         // all candidates of this length done
+      if ((tries & 0xFFFF) === 0 && performance.now() - t0 > budgetMs)
+        return { found: false, password: null, tries: tries, ms: performance.now() - t0, timedOut: true };
+    }
+  }
+  return { found: false, password: null, tries: tries, ms: performance.now() - t0, timedOut: false };
+}
 
 // Builds one ordered, duplicate-free candidate list from every built-in and user-supplied word.
 function buildFullDictionary(type, customText) {
@@ -124,52 +186,11 @@ function buildFullDictionary(type, customText) {
   return Array.from(new Set(base.concat(extra)));
 }
 
-// Searches an already-built word list, measuring only the search loop and exiting as soon as it finds a match.
-function dictionaryAttackFull(target, wordlist) {
-  const t0 = performance.now();
-  for (let i = 0; i < wordlist.length; i++) {
-    if (wordlist[i] === target) {
-      return { found: true, password: wordlist[i], tries: i + 1, ms: performance.now() - t0, dictSize: wordlist.length };
-    }
-  }
-  return { found: false, password: null, tries: wordlist.length, ms: performance.now() - t0, dictSize: wordlist.length };
-}
-
-// ---------- ATTACK 2: brute force (minimal work) ----------
-//  - Types 1 and 2: the length is known, so only that length is enumerated (8 or 256 candidates).
-//  - Type 3: the length is unknown, so lengths 1, 2, 3... are tried in order (shortest first).
-// An "odometer" counter avoids building strings. Stops after budgetMs (then the time is extrapolated).
-function bruteForce(target, type, budgetMs) {
-  const t = TYPES[type], A = t.alphabet, base = A.length;
-  const tgt = Array.from(target).map(function (c) { return A.indexOf(c); });
-  const minLen = t.length !== null ? t.length : 1;
-  const maxLen = t.length !== null ? t.length : 32;
-  const t0 = performance.now();
-  let tries = 0;
-  for (let L = minLen; L <= maxLen; L++) {
-    const idx = new Array(L).fill(0);
-    for (;;) {
-      tries++;
-      if (L === tgt.length) {
-        let same = true;
-        for (let i = 0; i < L; i++) if (idx[i] !== tgt[i]) { same = false; break; }
-        if (same) return { found: true, tries: tries, ms: performance.now() - t0, timedOut: false };
-      }
-      let p = L - 1;
-      while (p >= 0 && ++idx[p] === base) { idx[p] = 0; p--; }
-      if (p < 0) break;                                         // all candidates of this length done
-      if ((tries & 0xFFFF) === 0 && performance.now() - t0 > budgetMs)
-        return { found: false, tries: tries, ms: performance.now() - t0, timedOut: true };
-    }
-  }
-  return { found: false, tries: tries, ms: performance.now() - t0, timedOut: false };
-}
-
 // Worst-case time to exhaust the space of length L at `rate` tries per second
 function worstCase(base, L, rate) { return Math.pow(base, L) / rate; }
 
 if (typeof module !== "undefined") {
-  module.exports = { TYPES, checkPwd, isCommonPassword, isInCommonPasswordDictionary, dictionaryAttack, buildFullDictionary, dictionaryAttackFull, bruteForce, fmtDuration, worstCase, randomPassword };
+  module.exports = { TYPES, checkPwd, isCommonPassword, isInCommonPasswordDictionary, buildFullDictionary, prepareCandidates, dictionaryAttackEnc, bruteForceEnc, fmtDuration, worstCase, randomPassword };
 }
 
 // ===== USER INTERFACE (browser only) =====
@@ -180,15 +201,90 @@ if (typeof document !== "undefined") {
     return "<div class='table-wrap' style='max-height:none'><table class='t'><thead><tr>" + head.map(function (h) { return "<th>" + h + "</th>"; }).join("") +
       "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div>";
   };
+  const len3Value = function () { return Math.max(1, Math.min(32, parseInt($("len3").value) || 8)); };
+  const chk = function (value, type) { return checkPwd(value, type, type === 3 ? len3Value() : undefined); };
+  const lenOf = function (type) { return TYPES[type].length !== null ? TYPES[type].length : len3Value(); };
   const randomFor = function (type) {
     const t = TYPES[type];
-    return randomPassword(t.alphabet, t.length !== null ? t.length : Math.max(1, Math.min(32, parseInt($("len3").value) || 8)));
+    return randomPassword(t.alphabet, t.length !== null ? t.length : len3Value());
+  };
+  const showError = function (box, msg) { box.className = "resultat erreur"; box.style.whiteSpace = "pre-line"; box.textContent = msg; };
+
+  // ---------- Algorithm panels (Caesar / Hill / Playfair) of the attack blocks ----------
+  // prefix: "tests", "dict" or "bf". PANELS remembers the password type shown in each panel.
+  const PANELS = {};
+
+  function paramsHtml(prefix, type, algo) {
+    const A = TYPES[type].alphabet, n = A.length, d = DEFAULT_KEYS[type];
+    const symbols = type === 3 ? "a-z, A-Z, 0-9, +, *" : A.join(", ");
+    const shared = prefix === "tests" ? " The same key is used for the 3 types." : "";
+    if (algo === "caesar") {
+      return '<p class="petit hint">Alphabets a–z and A–Z (26 letters each). Key 1 to 25 (26 would not encrypt the text and shows an error). Digits, + and * are not changed by Caesar.</p>' +
+        '<div class="row"><div><label for="' + prefix + '-ckey">Key</label><input type="number" id="' + prefix + '-ckey" min="1" max="25" value="' + d.caesar + '"></div>' +
+        '<div><label for="' + prefix + '-cdir">Shift direction</label><select id="' + prefix + '-cdir"><option value="right">Right</option><option value="left">Left</option></select></div></div>';
+    }
+    if (algo === "hill") {
+      return '<p class="petit hint">2×2 key matrix, all calculations modulo ' + n + (prefix === "tests" ? " (2, 4 or 64 depending on the type)" : "") + '. The determinant must be coprime with it (odd). An odd number of symbols gets one padding symbol.' + shared + '</p>' +
+        '<div class="matrice">' + ["a", "b", "c", "d"].map(function (l, i) { return '<input id="' + prefix + '-h' + l + '" type="number" value="' + d.hill[i] + '" aria-label="Matrix ' + l + '">'; }).join("") + '</div>' +
+        '<div class="boutons"><button type="button" onclick="randomHill(\'' + prefix + '\')">Random valid key</button></div>';
+    }
+    const dims = PC.gridDims(n);
+    return '<p class="petit hint">Secret key made of symbols of the alphabet (' + symbols + '). The grid is built from the key. Equal neighbours and an odd end get a padding symbol.' + shared + '</p>' +
+      '<label for="' + prefix + '-pkey">Secret key</label><input type="text" id="' + prefix + '-pkey" value="' + esc(prefix === "tests" ? "1" : d.playfair) + '" autocomplete="off">';
+  }
+
+  function renderCipherPanel(prefix, type, containerId, keepAlgo) {
+    PANELS[prefix] = { type: type, container: containerId };
+    const box = $(containerId);
+    const algo = keepAlgo && $(prefix + "-algo") ? $(prefix + "-algo").value : "caesar";
+    box.innerHTML = '<div class="params"><label for="' + prefix + '-algo">Algorithm</label>' +
+      '<select id="' + prefix + '-algo" onchange="onAlgoChange(\'' + prefix + '\')">' +
+      Object.keys(ALGO_NAMES).map(function (a) { return '<option value="' + a + '">' + ALGO_NAMES[a] + '</option>'; }).join("") +
+      '</select><div id="' + prefix + '-params"></div></div>';
+    $(prefix + "-algo").value = algo;
+    $(prefix + "-params").innerHTML = paramsHtml(prefix, type, algo);
+  }
+  window.onAlgoChange = function (prefix) {
+    $(prefix + "-params").innerHTML = paramsHtml(prefix, PANELS[prefix].type, $(prefix + "-algo").value);
+  };
+  window.randomHill = function (prefix) {
+    const k = PC.randomHillKey(TYPES[PANELS[prefix].type].alphabet.length, randIndex);
+    ["a", "b", "c", "d"].forEach(function (l, i) { $(prefix + "-h" + l).value = k[i]; });
+  };
+  // Reads the panel and builds the cipher for the given type (throws an Error with a readable message when the key is not valid)
+  function readCipher(prefix, type) {
+    const A = TYPES[type].alphabet, algo = $(prefix + "-algo").value;
+    let params;
+    if (algo === "caesar") params = { key: $(prefix + "-ckey").value, direction: $(prefix + "-cdir").value };
+    else if (algo === "hill") {
+      params = { m: ["a", "b", "c", "d"].map(function (l) {
+        const raw = $(prefix + "-h" + l).value.trim(), v = Number(raw);
+        if (raw === "" || !Number.isInteger(v)) throw new Error("Hill: the key values must be integers.");
+        return v;
+      }) };
+    } else params = { key: $(prefix + "-pkey").value };
+    return PC.prepare(algo, A, params);
+  }
+
+  // ---------- Live warning above a field when the password does not respect the type ----------
+  function liveWarn(boxId, value, type) {
+    const box = $(boxId);
+    if (!value) { box.className = "alerte"; box.textContent = ""; return; }
+    const r = chk(value, type);
+    if (r.ok) { box.className = "alerte"; box.textContent = ""; return; }
+    box.className = "alerte on";
+    box.textContent = "⚠ This password does not respect Type " + type + ": " + r.reason + "\nWhat to do: " + r.fix;
+  }
+  window.liveGen = function (type) { liveWarn("warn" + type, $("pwd" + type).value, type); };
+  window.liveAttack = function (prefix) {
+    const type = Number($(prefix + "-type-select").value);
+    liveWarn("warn-" + prefix, $(prefix + "-form").value === "plain" ? $(prefix + "-target").value : "", type);
   };
 
-  // ---------- G1: generator ----------
-  window.genPwd = function (type) { $("pwd" + type).value = randomFor(type); window.checkInput(type); };
+  // ---------- Generator, validation, encryption, decryption ----------
+  window.genPwd = function (type) { $("pwd" + type).value = randomFor(type); liveGen(type); window.checkInput(type); };
   window.checkInput = function (type) {
-    const r = checkPwd($("pwd" + type).value, type);
+    const r = chk($("pwd" + type).value, type);
     const res = $("res" + type);
     res.style.whiteSpace = "pre-line";
     if (!r.ok) {
@@ -206,38 +302,129 @@ if (typeof document !== "undefined") {
     res.style.letterSpacing = "0"; res.style.fontSize = ".95rem"; res.style.fontFamily = "inherit";
   };
   window.updateCombo3 = function () {
-    const len = Math.max(1, Math.min(32, parseInt($("len3").value) || 8));
+    const len = len3Value();
     const txt = "64^" + len + " ≈ " + Math.pow(64, len).toExponential(2);
     $("combo3").textContent = "Alphabet: 64 characters — length " + len + " → " + txt + " combinations";
     $("len3Show").textContent = len;
+    if (window.liveGen) { liveGen(3); liveAttack("dict"); liveAttack("bf"); }
     $("space3").innerHTML = "<b>" + txt + "</b>";
   };
 
-  // Run both attacks on the 3 passwords of section 1 (generate one when the field is empty or invalid)
+  // ---------- Attack tests of section 1 ----------
   window.runAttackTests = function () {
     const rows = [];
-    let rate = null;
     for (let type = 1; type <= 3; type++) {
       let pwd = $("pwd" + type).value;
-      if (!checkPwd(pwd, type).ok) { genPwd(type); pwd = $("pwd" + type).value; }
+      if (!chk(pwd, type).ok) { genPwd(type); pwd = $("pwd" + type).value; }
+      let cipher;
+      try { cipher = readCipher("tests", type); }
+      catch (e) { rows.push("<tr><td>Type " + type + "</td><td colspan='3' style='color:#c0392b;white-space:pre-line'>" + esc(e.message) + "</td></tr>"); continue; }
+      const enc = cipher.encrypt(pwd).text, tIdx = cipher.toIdx(enc);
       const space = Math.pow(TYPES[type].alphabet.length, pwd.length);
-      const d = dictionaryAttack(pwd, type);
-      const b = bruteForce(pwd, type, 1500);
-      if (type === 3 && b.tries > 1000 && b.ms > 0) rate = b.tries / (b.ms / 1000);
-      let bf = b.found ? "found in " + fmtBig(b.tries) + " tries (" + fmtMs(b.ms) + ")"
+      const d = dictionaryAttackEnc(tIdx, prepareCandidates(TYPES[type].dict, TYPES[type].alphabet), cipher);
+      const b = bruteForceEnc(tIdx, type, cipher, 1500, lenOf(type));
+      let bf = b.found ? "found <b>" + esc(b.password) + "</b> in " + fmtBig(b.tries) + " tries (" + fmtMs(b.ms) + ")"
                        : "not found within 1.5 s (" + fmtBig(b.tries) + " tries, " + fmtMs(b.ms) + ")";
-      if (b.timedOut && rate) bf += "<br>Estimated time for all " + fmtBig(space) + " combinations at " + fmtBig(Math.round(rate)) + " tries/s: <strong>" + fmtDuration(worstCase(64, pwd.length, rate)) + "</strong>";
-      rows.push("<tr><td>Type " + type + "<br><span class='mono'>" + esc(pwd) + "</span></td><td>" + fmtBig(space) + "</td>" +
-        "<td>" + (d.found ? "<b>found</b> in " + d.tries + " tries" : "not found") + " (" + fmtMs(d.ms) + ")</td><td>" + bf + "</td></tr>");
+      if (b.timedOut && b.ms > 0) bf += "<br>Estimated time for all " + fmtBig(space) + " combinations at " + fmtBig(Math.round(b.tries / (b.ms / 1000))) + " tries/s: <strong>" +
+        fmtDuration(worstCase(TYPES[type].alphabet.length, pwd.length, b.tries / (b.ms / 1000))) + "</strong>";
+      rows.push("<tr><td>Type " + type + " · " + ALGO_NAMES[cipher.algo] + "<br><span class='mono'>" + esc(pwd) + "</span> → <span class='mono'>" + esc(enc) + "</span></td><td>" + fmtBig(space) + "</td>" +
+        "<td>" + (d.found ? "<b>found</b> <span class='mono'>" + esc(d.password) + "</span> in " + d.tries + " tries" : "not found") + " (" + fmtMs(d.ms) + ")</td><td>" + bf + "</td></tr>");
     }
-    $("resAttacks").innerHTML = table(["Password", "Combinations", "Dictionary attack", "Brute force"], rows);
+    $("resAttacks").innerHTML = table(["Password → encrypted", "Combinations", "Dictionary attack", "Brute force"], rows);
   };
 
-  // Generates a target for the selected type and resets the state of the two demonstrations.
-  window.generateDictionaryTarget = function () {
-    const type = Number($("dict-type-select").value);
-    $("dict-target").value = randomFor(type);
-    $("dict-result").innerHTML = "";
+  // ---------- Shared parts of the two attack interfaces ----------
+  window.onTypeChange = function (prefix) {
+    renderCipherPanel(prefix, Number($(prefix + "-type-select").value), prefix + "-cipher", true);
+    $(prefix + "-result").innerHTML = "";
+    liveAttack(prefix);
+  };
+  window.generateTarget = function (prefix) {
+    const type = Number($(prefix + "-type-select").value);
+    $(prefix + "-target").value = randomFor(type);
+    $(prefix + "-form").value = "plain";
+    $(prefix + "-result").innerHTML = "";
+    liveAttack(prefix);
+  };
+  // Returns the plain password (or null) and the encrypted password (text + indexes) the attacker is given.
+  function getTarget(prefix, type, cipher) {
+    const form = $(prefix + "-form").value, raw = $(prefix + "-target").value;
+    if (!raw) throw new Error("Enter or generate a target password first.");
+    try {
+      if (form === "plain") {
+        const v = chk(raw, type);
+        if (!v.ok) throw new Error("the password does not respect Type " + type + ". " + v.reason + " " + v.fix);
+        const e = cipher.encrypt(raw).text; return { plain: raw, enc: e, encIdx: cipher.toIdx(e), validity: v }; }
+      return { plain: null, enc: raw, encIdx: cipher.toIdx(raw) };
+    } catch (e) { throw new Error("Target: " + e.message); }
+  }
+  function targetLines(t, cipher) {
+    const noLetter = cipher.algo === "caesar" && !/[A-Za-z]/.test(t.enc);
+    return "Algorithm: <b>" + ALGO_NAMES[cipher.algo] + "</b><br>" +
+      (t.plain !== null ? "Original password: <b>" + esc(t.plain) + "</b><br>" : "") +
+      "Encrypted password (the value the attacker has): <b>" + esc(t.enc) + "</b><br>" +
+      (noLetter ? "<span class='tag'>Note</span> This password has no letters (a–z, A–Z), so Caesar leaves it unchanged: the encrypted password is the same as the original.<br>" : "");
+  }
+  function equivalenceNote(t, found) {
+    return found && t.plain !== null && found !== t.plain
+      ? "<p class='petit'>The password found (" + esc(found) + ") is not the original one (" + esc(t.plain) + ") but it gives the <b>same encrypted value</b>, so it opens the account all the same (Playfair / Hill padding).</p>" : "";
+  }
+
+  // Shown when an attack found the password: it is too weak
+  function weakAdvice(type) {
+    return "<div class='conseil'><b>Weak password!</b> The attack found it. Make it harder to find: add characters to it" +
+      (type === 3 ? " (for example <code>+</code> or <code>*</code>, mixed with letters and digits)" : " and use a longer password") +
+      ", or a symbol such as <code>#</code> or <code>.</code> if the system allows it (these two are outside the alphabets of the 3 types of this TP). " +
+      "Every added character multiplies the number of combinations the attacker must try (×" + TYPES[type].alphabet.length + " per character here), and avoid common words.</div>";
+  }
+
+  // ---------- Dictionary attack interface ----------
+  window.runDictionaryInterface = function () {
+    const type = Number($("dict-type-select").value), box = $("dict-result");
+    try {
+      const cipher = readCipher("dict", type), t = getTarget("dict", type, cipher);
+      const wordlist = buildFullDictionary(type, $("dict-custom").value);          // setup, outside the timed search
+      const cands = prepareCandidates(wordlist, TYPES[type].alphabet);
+      const r = dictionaryAttackEnc(t.encIdx, cands, cipher);
+      const preview = cands.words.slice(0, Math.min(r.tries, 20));
+      const attemptRows = preview.map(function (word, index) {
+        const status = r.found && index + 1 === r.tries ? "<span class='tag ok'>Match</span>" : "";
+        return "<tr><td>" + (index + 1) + "</td><td class='mono'>" + esc(word) + "</td><td class='mono'>" + esc(cipher.encrypt(word).text) + "</td><td>" + status + "</td></tr>";
+      });
+      const detailsTitle = "Showing first " + preview.length + " of " + fmtBig(r.tries) + " attempted word" + (r.tries === 1 ? "" : "s") + " (dictionary: " + fmtBig(r.dictSize) + " words)";
+      const ruleNote = t.validity && !t.validity.ok ? "Target note: " + esc(t.validity.reason) : "";
+      box.innerHTML = "<div class='resultat doux'>" +
+        (r.found ? "<span class='tag ok'>Found</span><br>Password found: <b>" + esc(r.password) + "</b><br>" : "<span class='tag'>Not found</span><br>") +
+        targetLines(t, cipher) +
+        "Attempts: " + fmtBig(r.tries) + "<br>Time taken: " + fmtMs(r.ms) + "<br>Dictionary size: " + fmtBig(r.dictSize) + " unique candidate(s)" +
+        (cands.skipped ? "<br>" + cands.skipped + " candidate(s) skipped: they contain symbols that are not allowed in Type " + type : "") + "</div>" +
+        (r.found ? weakAdvice(type) : "") +
+        equivalenceNote(t, r.found ? r.password : null) +
+        (ruleNote ? "<p class='petit'>" + ruleNote + "</p>" : "") +
+        "<details><summary>" + detailsTitle + "</summary>" +
+        table(["#", "Attempted word", "Encrypted word", "Status"], attemptRows) + "</details>";
+    } catch (e) { showError(box, e.message); }
+  };
+
+  // ---------- Brute force attack interface ----------
+  window.runBruteForceInterface = function () {
+    const type = Number($("bf-type-select").value), box = $("bf-result");
+    try {
+      const cipher = readCipher("bf", type), t = getTarget("bf", type, cipher);
+      const b = bruteForceEnc(t.encIdx, type, cipher, 2000, lenOf(type));
+      const base = TYPES[type].alphabet.length;
+      const len = t.plain !== null ? t.plain.length : (TYPES[type].length !== null ? TYPES[type].length : t.enc.length);
+      const space = Math.pow(base, len);
+      let status = b.found ? "<span class='tag ok'>Found</span><br>Password found: <b>" + esc(b.password) + "</b><br>"
+        : b.timedOut ? "<span class='tag'>Stopped after 2 s</span><br>" : "<span class='tag'>Not found</span><br>No password of this type gives this encrypted value.<br>";
+      let est = "";
+      if (b.timedOut && b.ms > 0) est = "<br>Estimated time to try all " + fmtBig(space) + " combinations at " + fmtBig(Math.round(b.tries / (b.ms / 1000))) + " tries/s: <strong>" + fmtDuration(worstCase(base, len, b.tries / (b.ms / 1000))) + "</strong>";
+      box.innerHTML = "<div class='resultat doux'>" + status + targetLines(t, cipher) +
+        "Attempts: " + fmtBig(b.tries) + "<br>Time taken: " + fmtMs(b.ms) + "<br>Total number of combinations: " + fmtBig(space) + est + "</div>" +
+        (b.found ? weakAdvice(type) : "") +
+        equivalenceNote(t, b.found ? b.password : null) +
+        (t.validity && !t.validity.ok ? "<p class='petit'>Target note: " + esc(t.validity.reason) + "</p>" : "");
+    } catch (e) { showError(box, e.message); }
   };
 
   window.checkCommonPasswordDictionary = function () {
@@ -257,64 +444,7 @@ if (typeof document !== "undefined") {
     }
   };
 
-  // Builds the list once, then runs the fast dictionary search and displays the outcome and first attempts.
-  window.runDictionaryInterface = function () {
-    const type = Number($("dict-type-select").value);
-    const target = $("dict-target").value;
-    const custom = $("dict-custom").value;
-    const box = $("dict-result");
-    if (!target) {
-      box.innerHTML = "<div class='resultat erreur'>Enter or generate a target password first.</div>";
-      return;
-    }
-
-    const wordlist = buildFullDictionary(type, custom); // This setup is deliberately outside the timed search.
-    const validity = checkPwd(target, type);
-    const r = dictionaryAttackFull(target, wordlist);
-    const preview = wordlist.slice(0, Math.min(r.tries, 20));
-    const attemptRows = preview.map(function (word, index) {
-      const status = r.found && index + 1 === r.tries ? "<span class='tag ok'>Match</span>" : "";
-      return "<tr><td>" + (index + 1) + "</td><td class='mono'>" + esc(word) + "</td><td>" + status + "</td></tr>";
-    });
-    const shown = preview.length;
-    const detailsTitle = "Showing first " + shown + " of " + fmtBig(r.tries) + " attempted word" + (r.tries === 1 ? "" : "s") + " (dictionary: " + fmtBig(r.dictSize) + " words)";
-    const ruleNote = validity.ok
-      ? "The target matches the selected Type " + type + " rules."
-      : "Target note: " + esc(validity.reason);
-
-    box.innerHTML = "<div class='resultat'>" +
-      (r.found ? "<span class='tag ok'>Found</span><br>Password found: <b>" + esc(r.password) + "</b><br>" : "<span class='tag'>Not found</span><br>") +
-      "Attempts: " + fmtBig(r.tries) + "<br>Time taken: " + fmtMs(r.ms) + "<br>Dictionary size: " + fmtBig(r.dictSize) + " unique candidate(s)</div>" +
-      "<p class='petit'>" + ruleNote + "</p>" +
-      "<details><summary>" + detailsTitle + "</summary>" +
-      table(["#", "Attempted word", "Status"], attemptRows) + "</details>";
-  };
-
-  //  BRUTE FORCE & PROTECTIONS =====
-
-// 2. Interface pour exécuter le Brute Force optimisé
-window.runBruteForceInterface = function () {
-  const type = Number($("bf-type-select").value);
-  const target = $("bf-target").value;
-  const box = $("bf-result");
-
-  if (!target) {
-    box.innerHTML = "<div class='resultat erreur'>Veuillez d'abord entrer ou générer un mot de passe cible.</div>";
-    return;
-  }
-
-  const validity = checkPwd(target, type);
-  // Appel de la fonction bruteForce existante dans password.js (budget de 2000ms max)
-  const b = bruteForce(target, type, 2000);
-  const space = Math.pow(TYPES[type].alphabet.length, target.length);
-
-  box.innerHTML = "<div class='resultat'>" +
-    (b.found ? "<span class='tag ok'>Trouvé !</span><br>Mot de passe trouvé : <b>" + esc(target) + "</b><br>" : "<span class='tag'>Délai dépassé / Non trouvé</span><br>") +
-    "Essais réalisés : " + fmtBig(b.tries) + "<br>" +
-    "Temps d'exécution : " + fmtMs(b.ms) + "<br>" +
-    "Espace total des combinaisons : " + fmtBig(space) + "</div>";
-};
-
+  // ===== PROTECTIONS (login attempt limits) =====
 let bfAttempts = 0;
 let bfLockoutUntil = 0;
 let loginCountdown = null;
@@ -464,7 +594,14 @@ window.testBruteForceProtection = function () {
   result.textContent = "Incorrect password. " + remaining + " attempt(s) remaining before the temporary block.";
 };
 
-  updateCombo3();
-
+  // ---------- Start ----------
+  renderCipherPanel("tests", 3, "tests-cipher");
+  renderCipherPanel("dict", Number($("dict-type-select").value), "dict-cipher");
+  renderCipherPanel("bf", Number($("bf-type-select").value), "bf-cipher");
+  [1, 2, 3].forEach(function (t) { $("pwd" + t).addEventListener("input", function () { liveGen(t); }); });
+  ["dict", "bf"].forEach(function (p) {
+    $(p + "-target").addEventListener("input", function () { liveAttack(p); });
+    $(p + "-form").addEventListener("change", function () { liveAttack(p); });
+  });
   updateCombo3();
 }

@@ -8,8 +8,8 @@ function blockNegativeKey(event) {
 // The parameter fields of each algorithm (p = "e" for sender, "d" for receiver)
 function paramsHtml(algo, p) {
   if (algo === "caesar") {
-    return '<div class="params"><p class="petit hint">Alphabet a–z then A–Z (52 letters). Key 1 to 51; spaces are hidden in the encrypted text.</p>' +
-      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" min="1" value="3" onkeydown="blockNegativeKey(event)"></div>' +
+    return '<div class="params"><p class="petit hint">Alphabets a–z and A–Z (26 letters each, case is kept). Key 1 to 25 (26 would not encrypt the message); spaces are hidden in the encrypted text.</p>' +
+      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" min="1" max="25" value="3" onkeydown="blockNegativeKey(event)"></div>' +
       '<div><label for="' + p + '-cdir">Shift direction</label><select id="' + p + '-cdir"><option value="right">Right</option><option value="left">Left</option></select></div></div></div>';
   }
   if (algo === "hill") {
@@ -35,11 +35,11 @@ function showParams(p) {
 // ---------- Flaws and solutions of the chosen algorithm ----------
 const FLAWS = {
   caesar: [
-    ["<b>Key 0 or 52:</b> a full turn of the alphabet leaves the message unchanged.", true,
-     "The key is reduced modulo 52 and 0 / 52 are refused. <i>Example:</i> key 55 → used as key 3."],
+    ["<b>Key 0 or 26:</b> a full turn of the alphabet leaves the message unchanged.", true,
+     "Only keys 1 to 25 are accepted: 26 shows an error because the message would not be encrypted."],
     ["<b>Visible spaces:</b> word lengths help to guess the text.", true,
      "Spaces disappear from the encrypted text (each one is hidden as the letters \"Qs\" before encryption) and come back at decryption: \"Hello World\" is recovered exactly."],
-    ["<b>Few keys (51):</b> an attacker tries them all (brute force).", false,
+    ["<b>Few keys (25):</b> an attacker tries them all (brute force).", false,
      "Use a longer key that changes the shift for each letter (Vigenère) or a modern cipher (AES)."],
     ["<b>Frequency analysis:</b> the same letter always gives the same cipher letter.", false,
      "Change the shift from one letter to the next (Vigenère) to hide the frequencies."],

@@ -198,10 +198,15 @@ details.bloc[open] > summary { margin-bottom: 14px; }
 .petit { color: var(--grey-600); font-size: .93rem; line-height: 1.6; margin: 6px 0 12px; }
 .row { display: flex; gap: 14px; flex-wrap: wrap; }
 .row > div { flex: 1; min-width: 150px; }
-select, input[type="text"] {
+/* All text-like fields share the same look and fill the width (password fields were missing: that is why they looked tiny) */
+select,
+input[type="text"],
+input[type="password"],
+input[type="search"] {
   font: inherit; border: 1px solid var(--grey-200); border-radius: 8px;
   padding: 9px 12px; background: var(--white); color: var(--ink); width: 100%;
 }
+input::placeholder, textarea::placeholder { color: var(--grey-400); }
 .row input[type="number"] { width: 100%; }
 .boutons button.danger { border-color: #c0392b; color: #c0392b; }
 .table-wrap { max-height: 380px; overflow: auto; border: 1px solid var(--grey-200); border-radius: 8px; }
@@ -214,3 +219,41 @@ table.t tr.best { background: #eaf5ea; font-weight: 600; }
 .tag { display: inline-block; font-size: .78rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grey-400); color: var(--grey-600); white-space: nowrap; }
 .tag.ok { border-color: #1e7e34; color: #1e7e34; background: #eaf5ea; }
 .msg-info { color: var(--grey-600); font-size: .9rem; min-height: 1.2em; margin: 8px 0 0; white-space: pre-line; }
+
+/* ===== Password page ===== */
+.bloc h3 { font-size: 1.02rem; margin: 22px 0 8px; }
+.bloc h3:first-of-type { margin-top: 16px; }
+code { font-family: Consolas, monospace; background: var(--grey-100); padding: 1px 6px; border-radius: 4px; font-size: .9em; }
+.mono { font-family: Consolas, monospace; }
+#len3 { max-width: 160px; }
+.ptype { border-top: 1px solid var(--grey-100); margin-top: 24px; padding-top: 4px; }
+.ptype:first-of-type { border-top: none; margin-top: 8px; }
+
+/* Algorithm panel (Caesar / Hill / Playfair) */
+.params { border-left: 3px solid var(--ink); padding-left: 14px; margin-top: 14px; }
+.params .hint { margin: 0 0 4px; }
+.params label:first-child { margin-top: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin-top: 12px; }
+.check input { width: auto; }
+.grille { border-collapse: collapse; margin-top: 8px; }
+.grille td { width: 34px; height: 34px; text-align: center; border: 1px solid var(--grey-200); font-family: Consolas, monospace; }
+.grille td.k { background: var(--grey-100); font-weight: 700; }
+.grille-wrap { overflow-x: auto; }
+.matrice input { padding: 9px 4px; }
+.resultat .small { display: block; margin-top: 8px; font-family: inherit; font-size: .88rem; letter-spacing: 0; color: var(--grey-600); white-space: pre-line; }
+.resultat .big { display: block; font-family: Consolas, monospace; font-size: 1.15rem; letter-spacing: .1em; word-break: break-all; }
+button.mini { font: inherit; font-size: .85rem; font-weight: 600; padding: 4px 14px; margin-top: 10px; cursor: pointer; border-radius: 999px; border: 1px solid var(--ink); background: var(--white); color: var(--ink); letter-spacing: 0; }
+button.mini:hover { box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.boutons button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.table-wrap td .mono { word-break: break-all; }
+@media (max-width: 520px) {
+  .bloc { padding: 18px 16px; }
+  .row > div { min-width: 120px; }
+}
+.resultat.doux { font-family: inherit; font-size: .95rem; letter-spacing: 0; line-height: 1.7; }
+.resultat.doux b { font-family: Consolas, monospace; }
+
+/* Small message shown above a password field that does not respect its type */
+.alerte { display: none; margin: 8px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid #c0392b; background: #fdf1ef; color: #c0392b; font-size: .9rem; line-height: 1.5; white-space: pre-line; }
+.alerte.on { display: block; }
+.conseil { margin-top: 10px; padding: 8px 12px; border-left: 3px solid #b9770e; background: #fdf6e7; color: #7a4e07; font-size: .9rem; line-height: 1.55; border-radius: 4px; }
