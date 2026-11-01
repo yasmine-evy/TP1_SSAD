@@ -6,19 +6,29 @@
     <title>Integrity</title>
     <link rel="stylesheet" href="../style.css">
     <link rel="icon" type="image/png" href="../Images/logo.png">
+    <style>
+        .params { border-left: 3px solid var(--ink); padding-left: 14px; margin-top: 14px; }
+        .params .hint { margin: 0 0 4px; }
+        .grille { border-collapse: collapse; margin-top: 8px; }
+        .grille-wrap { overflow-x: auto; }
+    </style>
 </head>
 <body>
     <header>
         <div class="hero">
             <a class="retour" href="../index.html">← Back</a><br>
             <h1>Integrity</h1>
-            <p class="intro">Choose an algorithm (Caesar, Hill or Playfair), write a message, give the key, then encrypt or decrypt it. The algorithms are shared with the encryption page.</p>
+            <p class="intro">Side A encrypts the message with Caesar, Hill, or Playfair, then calculates a 16-bit checksum from the encrypted payload. Side B checks the checksum before decrypting; length and padding data preserve the original message.</p>
         </div>
     </header>
 
     <main>
         <div class="bloc" id="integriteG1">
-            <h2>Encrypt / Decrypt interface</h2>
+            <h2>1. Encryption (Sender)</h2>
+
+            <label for="i-msg">Message</label>
+            <textarea id="i-msg" rows="3" oninput="sanitizeMessage()">HelloWorld</textarea>
+            <p class="petit" id="i-msg-hint">Allowed characters: a–z, A–Z, 0–9, * and +. Other characters are removed.</p>
 
             <label for="i-algo">Algorithm</label>
             <select id="i-algo" onchange="showParams()">
@@ -26,26 +36,30 @@
                 <option value="hill">Hill</option>
                 <option value="playfair">Playfair</option>
             </select>
-
-            <label for="i-msg">Message</label>
-            <textarea id="i-msg" rows="3" placeholder="Write the message here">Hello World</textarea>
             <div id="i-params"></div>
 
             <div class="boutons">
-                <button type="button" class="principal" onclick="doEncrypt()">Encrypt</button>
-                <button type="button" onclick="doDecrypt()">Decrypt</button>
+                <button type="button" class="principal" id="i-encrypt-button" onclick="doEncrypt()">Encrypt and calculate checksum</button>
             </div>
 
             <div class="resultat" id="i-out" aria-live="polite"></div>
             <p class="msg-info" id="i-info"></p>
-            <div class="boutons" id="i-use" hidden>
-                <button type="button" onclick="useResult()">Use the result as the message ↑</button>
+            <div id="i-extra"></div>
+            <div class="boutons" id="i-use" style="display:none">
+                <button type="button" onclick="sendToReceiver()">Send encrypted message and checksum to Side B ↓</button>
             </div>
         </div>
 
         <div class="bloc" id="integriteNext">
-            <h2>Integrity and authenticity check</h2>
-            <div class="slot" id="integrite-next"></div>
+            <h2>Side B — Decrypt and verify integrity</h2>
+            <p class="petit">Recalculate the checksum from the received encrypted payload and compare it with the attached value before decrypting. Length and padding data help restore the original message accurately. Edit the ciphertext to test tamper detection. This simple checksum is not cryptographic authentication and can be altered or recomputed.</p>
+            <label for="i-received">Received ciphertext</label>
+            <textarea id="i-received" rows="3" placeholder="Paste the Side A value: ciphertext|checksum|length|padding data"></textarea>
+            <div class="boutons">
+                <button type="button" class="principal" id="i-verify-button" onclick="doDecrypt()">Decrypt and verify</button>
+            </div>
+            <div class="resultat" id="i-verified-message" aria-live="polite"></div>
+            <div class="resultat" id="i-integrity-result" aria-live="polite"></div>
         </div>
     </main>
 

@@ -283,7 +283,8 @@ function runPlayfairWithAlphabet(raw, p, mode, alphabet) {
     const first = pair[0], second = pair[1];
     const filler = alphabet[0] === first ? alphabet[1] : alphabet[0];
     output += first;
-    if (!(second === filler && (i === pairs.length - 1 || pairs[i + 1][0] === first))) output += second;
+    if (!(p.removePad !== false && second === filler && (i === pairs.length - 1 || pairs[i + 1][0] === first)))
+      output += second;
   });
   return { text: output, info: "Padding letters removed.", table: table, key: key };
 }

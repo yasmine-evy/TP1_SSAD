@@ -1,88 +1,247 @@
-// The integrity page reuses runCipher() from Encryption/ciphers.js.
+// ===== G1: INTEGRITY INTERFACE (choice of algorithm, message, key, Encrypt / Decrypt) =====
+// The three algorithms are not rewritten here: everything goes through runCipher() of ciphers.js.
 const $ = function (id) { return document.getElementById(id); };
+const CIPHER_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+*";
+let senderMessageLength = 0;
+let senderPaddingMap = "-";
 
+// Key fields of the chosen algorithm
 function paramsHtml(algo) {
   if (algo === "caesar") {
-    return '<div class="params"><p class="petit hint">Alphabets a–z and A–Z. Choose a shift from 1 to 25.</p>' +
-      '<div class="row"><div><label for="i-ckey">Key</label><input type="number" id="i-ckey" min="1" max="25" value="3"></div>' +
+    return '<div class="params">' +
+      '<div class="row"><div><label for="i-ckey">Key</label><input type="number" id="i-ckey" min="1" max="63" value="3" onkeydown="blockNegativeKey(event)"></div>' +
       '<div><label for="i-cdir">Shift direction</label><select id="i-cdir"><option value="right">Right</option><option value="left">Left</option></select></div></div></div>';
   }
   if (algo === "hill") {
-    return '<div class="params"><p class="petit hint">2×2 key matrix. The determinant must be coprime with 26.</p>' +
-      '<div class="matrice"><input id="i-ha" type="number" value="3" aria-label="a"><input id="i-hb" type="number" value="3" aria-label="b">' +
-      '<input id="i-hc" type="number" value="2" aria-label="c"><input id="i-hd" type="number" value="5" aria-label="d"></div>' +
+    return '<div class="params">' +
+      '<div class="matrice"><input id="i-ha" type="number" value="3"><input id="i-hb" type="number" value="3">' +
+      '<input id="i-hc" type="number" value="2"><input id="i-hd" type="number" value="5"></div>' +
       '<div class="boutons"><button type="button" onclick="randomHillKey()">Random valid key</button></div></div>';
   }
-  return '<div class="params"><p class="petit hint">Provide a secret key. Filler characters are handled automatically.</p>' +
-    '<label for="i-pkey">Secret key</label><input type="text" id="i-pkey" placeholder="Example: MONARCHY" autocomplete="off">' +
-    '<label class="check"><input type="checkbox" id="i-prem" checked> Remove the padding letters after decrypting</label></div>';
+  return '<div class="params">' +
+    '<label for="i-pkey">Secret key</label><input type="text" id="i-pkey" placeholder="Example: MONARCHY" pattern="[A-Za-z]*" oninput="lettersOnly(this)"></div>';
+}
+
+function tableHtml(table, key) {
+  const size = Math.sqrt(table.length);
+  let html = '<div class="grille-wrap"><table class="grille">';
+  for (let row = 0; row < size; row++) {
+    html += "<tr>";
+    for (let column = 0; column < size; column++) {
+      const letter = table[row * size + column];
+      html += "<td" + (key.indexOf(letter) !== -1 ? ' class="k"' : "") + ">" + letter + "</td>";
+    }
+    html += "</tr>";
+  }
+  return html + "</table></div>";
 }
 
 function showParams() {
-  $("i-params").innerHTML = paramsHtml($("i-algo").value);
+  const algo = $("i-algo").value;
+  $("i-params").innerHTML = paramsHtml(algo);
   $("i-out").textContent = "";
   $("i-out").className = "resultat";
   $("i-info").textContent = "";
-  $("i-use").hidden = true;
+  $("i-extra").innerHTML = "";
+  $("i-verified-message").textContent = "";
+  $("i-verified-message").className = "resultat";
+  $("i-integrity-result").textContent = "";
+  $("i-integrity-result").className = "resultat";
+  $("i-use").style.display = "none";
 }
 
 function readParams(algo) {
-  if (algo === "caesar") return { key: $("i-ckey").value, direction: $("i-cdir").value };
+  if (algo === "caesar") {
+    const raw = $("i-ckey").value.trim(), key = Number(raw);
+    if (!raw || !Number.isSafeInteger(key) || key < 1 || key >= CIPHER_ALPHABET.length)
+      throw new Error("Caesar key must be an integer from 1 to 63.");
+    return { key: key, direction: $("i-cdir").value };
+  }
   if (algo === "hill") {
     return ["a", "b", "c", "d"].map(function (letter) {
-      const raw = $("i-h" + letter).value.trim();
-      const value = Number(raw);
-      if (raw === "" || !Number.isInteger(value)) throw new Error("Hill: the key values must be integers.");
+      const raw = $("i-h" + letter).value.trim(), value = Number(raw);
+      if (raw === "" || !Number.isSafeInteger(value)) throw new Error("Hill: the key values must be safe integers.");
       return value;
     });
   }
-  return { key: $("i-pkey").value, removePad: $("i-prem").checked };
+  const key = $("i-pkey").value;
+  if (!key || Array.from(key).some(function (character) { return CIPHER_ALPHABET.indexOf(character) === -1; }))
+    throw new Error("Playfair secret key must contain at least one character from a-z, A-Z, 0-9, + or *.");
+  return { key: key, removePad: true };
+}
+
+function blockNegativeKey(event) {
+  if (event.key === "-") event.preventDefault();
+}
+
+function lettersOnly(input) {
+  input.value = input.value.replace(/[^A-Za-z0-9*+]/g, "");
 }
 
 function randomHillKey() {
-  let key;
-  do {
-    key = [0, 1, 2, 3].map(function () { return Math.floor(Math.random() * 26); });
-  } while (!detInfo(key).ok);
-  ["a", "b", "c", "d"].forEach(function (letter, index) {
-    $("i-h" + letter).value = key[index];
-  });
+  let k;
+  do { k = [0, 1, 2, 3].map(function () { return Math.floor(Math.random() * CIPHER_ALPHABET.length); }); } while (!detInfoBase(k, CIPHER_ALPHABET.length).ok);
+  ["a", "b", "c", "d"].forEach(function (l, i) { $("i-h" + l).value = k[i]; });
 }
 
-function run(mode) {
-  const algorithm = $("i-algo").value;
-  const output = $("i-out");
-  const info = $("i-info");
-  output.className = "resultat";
-  output.style.whiteSpace = "";
-  info.textContent = "";
-  $("i-use").hidden = true;
+function sanitizeMessage() {
+  const field = $("i-msg");
+  field.value = field.value.replace(/[^A-Za-z0-9*+]/g, "");
+}
 
-  try {
-    const result = runCipher(algorithm, $("i-msg").value, readParams(algorithm), mode);
-    output.textContent = result.text;
-    const algorithmName = algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
-    info.textContent = (mode === "encrypt" ? "Encrypted" : "Decrypted") + " with " + algorithmName + "." +
-      (result.info ? "\n" + result.info : "");
-    $("i-use").hidden = false;
-  } catch (error) {
-    output.className = "resultat erreur";
-    output.style.whiteSpace = "pre-line";
-    output.textContent = error.message;
+function calculateControlValue(value) {
+  let sum = 0;
+  const bytes = new TextEncoder().encode(value);
+  for (const byte of bytes) sum = (sum + byte) % 65536;
+  return sum.toString(16).padStart(4, "0");
+}
+
+function makePlayfairPaddingMap(message) {
+  const padding = [];
+  let index = 0;
+  while (index < message.length) {
+    if (index + 1 === message.length || message[index] === message[index + 1]) {
+      padding.push("1");
+      index++;
+    } else {
+      padding.push("0");
+      index += 2;
+    }
   }
+  return padding.join("");
+}
+
+function recoverPlayfairMessage(rawDecrypted, expectedLength, key, ciphertext, paddingMap) {
+  const pairs = rawDecrypted.match(/../g) || [];
+  const firstAlphabetCharacter = CIPHER_ALPHABET[0];
+  const secondAlphabetCharacter = CIPHER_ALPHABET[1];
+  if (pairs.length !== paddingMap.length)
+    throw new Error("The Playfair padding data is malformed.");
+  let message = "";
+  for (let pairIndex = 0; pairIndex < pairs.length; pairIndex++) {
+    const pair = pairs[pairIndex];
+    const first = pair[0], second = pair[1];
+    const filler = first === firstAlphabetCharacter ? secondAlphabetCharacter : firstAlphabetCharacter;
+    const nextPairStartsWithFirst = pairIndex === pairs.length - 1 || pairs[pairIndex + 1][0] === first;
+    if (paddingMap[pairIndex] === "1") {
+      if (second !== filler || !nextPairStartsWithFirst)
+        throw new Error("The Playfair padding data does not match the decrypted text.");
+      message += first;
+    } else {
+      if (first === second)
+        throw new Error("The Playfair pair data is malformed.");
+      message += first + second;
+    }
+  }
+
+  if (message.length !== expectedLength || runCipher("playfair", message, { key: key, removePad: true }, "encrypt", CIPHER_ALPHABET).text !== ciphertext)
+    throw new Error("The decrypted Playfair message does not match its original length.");
+  return message;
+}
+
+function showModified(message) {
+  $("i-integrity-result").textContent = message;
+  $("i-integrity-result").className = "resultat erreur";
 }
 
 function doEncrypt() {
-  run("encrypt");
+  const button = $("i-encrypt-button");
+  const out = $("i-out");
+  const info = $("i-info");
+  const extra = $("i-extra");
+  const message = $("i-msg").value;
+  const algo = $("i-algo").value;
+  out.textContent = "";
+  out.className = "resultat";
+  info.textContent = "";
+  extra.innerHTML = "";
+  senderMessageLength = 0;
+  senderPaddingMap = "-";
+  $("i-use").style.display = "none";
+  button.disabled = true;
+  try {
+    if (!message || Array.from(message).some(function (character) { return CIPHER_ALPHABET.indexOf(character) === -1; }))
+      throw new Error("Message must contain one or more characters from a-z, A-Z, 0-9, + or *.");
+    const r = runCipher(algo, message, readParams(algo), "encrypt", CIPHER_ALPHABET);
+    out.textContent = r.text;
+    senderMessageLength = message.length;
+    senderPaddingMap = algo === "playfair" ? makePlayfairPaddingMap(message) : "-";
+    const checksumInput = r.text + "|" + senderMessageLength + "|" + senderPaddingMap;
+    const controlValue = calculateControlValue(checksumInput);
+    const name = algo.charAt(0).toUpperCase() + algo.slice(1);
+    info.textContent = "Cipher: " + name + "\nChecksum of encrypted payload: " + controlValue +
+      "\nSend as: " + r.text + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap + (r.info ? "\n" + r.info : "");
+    if (algo === "playfair") extra.innerHTML = tableHtml(r.table, r.key);
+    $("i-use").style.display = "flex";
+  } catch (e) {
+    out.className = "resultat erreur";
+    out.textContent = e.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function doDecrypt() {
-  run("decrypt");
+  const button = $("i-verify-button");
+  const output = $("i-verified-message");
+  const result = $("i-integrity-result");
+  const envelope = $("i-received").value;
+  const algo = $("i-algo").value;
+  output.textContent = "";
+  output.className = "resultat";
+  result.textContent = "";
+  result.className = "resultat";
+  button.disabled = true;
+
+  try {
+    const parts = envelope.split("|");
+    if (parts.length !== 4 || !parts[0]) throw new Error("The received value must contain encrypted text, checksum, original length, and padding data separated by '|'.");
+    const ciphertext = parts[0];
+    const receivedControlValue = parts[1];
+    const receivedLength = parts[2];
+    const paddingMap = parts[3];
+    if (!/^[0-9a-f]{4}$/i.test(receivedControlValue))
+      throw new Error("The received checksum value is malformed.");
+    if (!/^[1-9]\d*$/.test(receivedLength) || !Number.isSafeInteger(Number(receivedLength)) || Number(receivedLength) > ciphertext.length)
+      throw new Error("The received original message length is invalid.");
+    const originalLength = Number(receivedLength);
+    if (algo === "playfair" ? !/^[01]+$/.test(paddingMap) || paddingMap.length !== ciphertext.length / 2 : paddingMap !== "-")
+      throw new Error("The received padding data is invalid.");
+    const calculatedControlValue = calculateControlValue(ciphertext + "|" + receivedLength + "|" + paddingMap);
+    if (calculatedControlValue.toLowerCase() !== receivedControlValue.toLowerCase()) {
+      showModified("Message modified — the checksum of the encrypted message does not match.");
+      return;
+    }
+
+    const params = readParams(algo);
+    let message;
+    if (algo === "playfair") {
+      params.removePad = false;
+      const rawDecrypted = runCipher(algo, ciphertext, params, "decrypt", CIPHER_ALPHABET).text;
+      message = recoverPlayfairMessage(rawDecrypted, originalLength, params.key, ciphertext, paddingMap);
+    } else {
+      message = runCipher(algo, ciphertext, params, "decrypt", CIPHER_ALPHABET).text;
+      if (algo === "hill" && message.length + 1 === originalLength)
+        message += CIPHER_ALPHABET[0];
+      if (message.length !== originalLength)
+        throw new Error("The decrypted message does not match its original length.");
+    }
+    output.textContent = message;
+    result.textContent = "Message intact — the checksum of the encrypted message matches.";
+    result.className = "resultat doux";
+  } catch (error) {
+    showModified("Message modified — " + error.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
-function useResult() {
-  $("i-msg").value = $("i-out").textContent;
-  $("i-msg").focus();
+function sendToReceiver() {
+  const ciphertext = $("i-out").textContent;
+  const checksumInput = ciphertext + "|" + senderMessageLength + "|" + senderPaddingMap;
+  const controlValue = calculateControlValue(checksumInput);
+  $("i-received").value = ciphertext + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap;
+  $("i-received").focus();
 }
 
 showParams();
