@@ -5,22 +5,25 @@ function blockNegativeKey(event) {
   if (event.key === "-") event.preventDefault();
 }
 
+function lettersOnly(input) {
+  input.value = input.value.replace(/[^A-Za-z]/g, "");
+}
+
 // The parameter fields of each algorithm (p = "e" for sender, "d" for receiver)
 function paramsHtml(algo, p) {
   if (algo === "caesar") {
-    return '<div class="params"><p class="petit hint">Alphabets a–z and A–Z (26 letters each, case is kept). Key 1 to 25 (26 would not encrypt the message); spaces are hidden in the encrypted text.</p>' +
-      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" min="1" max="25" value="3" onkeydown="blockNegativeKey(event)"></div>' +
+    return '<div class="params">' +
+      '<div class="row"><div><label for="' + p + '-ckey">Key</label><input type="number" id="' + p + '-ckey" min="1" value="3" onkeydown="blockNegativeKey(event)"></div>' +
       '<div><label for="' + p + '-cdir">Shift direction</label><select id="' + p + '-cdir"><option value="right">Right</option><option value="left">Left</option></select></div></div></div>';
   }
   if (algo === "hill") {
-    return '<div class="params"><p class="petit hint">2×2 key matrix (negative numbers accepted). The determinant must be coprime with 26.</p>' +
+    return '<div class="params">' +
       '<div class="matrice"><input id="' + p + '-ha" type="number" value="3"><input id="' + p + '-hb" type="number" value="3">' +
       '<input id="' + p + '-hc" type="number" value="2"><input id="' + p + '-hd" type="number" value="5"></div>' +
       '<div class="boutons"><button type="button" onclick="randomHillKey(\'' + p + '\')">Random valid key</button></div></div>';
   }
-  return '<div class="params"><p class="petit hint">Secret key (letters) and padding letter.</p>' +
-    '<label for="' + p + '-pkey">Secret key</label><input type="text" id="' + p + '-pkey" placeholder="Example: MONARCHY">' +
-    '<label for="' + p + '-ppad">Padding letter</label><input type="text" id="' + p + '-ppad" maxlength="1" value="X">' +
+  return '<div class="params">' +
+    '<label for="' + p + '-pkey">Secret key</label><input type="text" id="' + p + '-pkey" placeholder="Example: MONARCHY" pattern="[A-Za-z]*" oninput="lettersOnly(this)">' +
     (p === "d" ? '<label class="check"><input type="checkbox" id="d-prem" checked> Remove the padding letters after decrypting</label>' : '') + '</div>';
 }
 
@@ -35,11 +38,11 @@ function showParams(p) {
 // ---------- Flaws and solutions of the chosen algorithm ----------
 const FLAWS = {
   caesar: [
-    ["<b>Key 0 or 26:</b> a full turn of the alphabet leaves the message unchanged.", true,
-     "Only keys 1 to 25 are accepted: 26 shows an error because the message would not be encrypted."],
+    ["<b>Key 0 or 52:</b> a full turn of the alphabet leaves the message unchanged.", true,
+     "The key is reduced modulo 52 and 0 / 52 are refused. <i>Example:</i> key 55 → used as key 3."],
     ["<b>Visible spaces:</b> word lengths help to guess the text.", true,
-     "Spaces disappear from the encrypted text (each one is hidden as the letters \"Qs\" before encryption) and come back at decryption: \"Hello World\" is recovered exactly."],
-    ["<b>Few keys (25):</b> an attacker tries them all (brute force).", false,
+     "Spaces disappear from the encrypted text (each one is hidden as the letters \"QS\" before encryption) and come back at decryption: \"Hello World\" is recovered exactly."],
+    ["<b>Few keys (51):</b> an attacker tries them all (brute force).", false,
      "Use a longer key that changes the shift for each letter (Vigenère) or a modern cipher (AES)."],
     ["<b>Frequency analysis:</b> the same letter always gives the same cipher letter.", false,
      "Change the shift from one letter to the next (Vigenère) to hide the frequencies."],
@@ -56,7 +59,7 @@ const FLAWS = {
     ["<b>Ambiguous padding X:</b> an even message already ending with X loses that X when decrypting.", true,
      "A warning is shown at encryption; add one more letter to avoid it."],
     ["<b>Visible spaces:</b> word lengths would leak in the encrypted text.", true,
-     "Spaces disappear from the encrypted text (hidden as \"Qs\" before encryption) and come back at decryption. Cost: the encrypted text is 2 letters longer per space."],
+     "Spaces disappear from the encrypted text (hidden as \"QS\" before encryption) and come back at decryption. Cost: the encrypted text is 2 letters longer per space."],
     ["<b>Known plaintext:</b> the algorithm is linear, so 2 known blocks give the key.", false,
      "Use a bigger matrix (3×3) and add a non-linear step (affine Hill)."],
     ["<b>Same blocks → same results:</b> repetitions stay visible.", false,
@@ -65,12 +68,12 @@ const FLAWS = {
   playfair: [
     ["<b>Equal letters in a pair</b> (e.g. LL) cannot be encrypted.", true,
      "The padding letter is inserted between them (and at the end if the length is odd)."],
-    ["<b>Padding letter removal:</b> removing it can also delete a real X of the original message.", true,
-     "The padding letter is configurable and the removal can be switched off with the checkbox at decryption."],
+    ["<b>Padding letter removal:</b> removing it can also delete a real X or Q of the original message.", true,
+     "Padding is dynamic: XX uses Q, while every other repeated letter uses X. Its removal can be switched off with the checkbox at decryption."],
     ["<b>Letters only, I = J:</b> spaces, digits and the J/I difference are lost.", true,
      "The table is shown so the receiver can check. Case is kept; only J → I and digits cannot be recovered."],
     ["<b>Visible spaces:</b> word lengths would leak in the encrypted text.", true,
-     "Spaces disappear from the encrypted text (hidden as \"Qs\" before encryption) and come back at decryption. Cost: the encrypted text is 2 letters longer per space."],
+     "Spaces disappear from the encrypted text (hidden as \"QS\" before encryption) and come back at decryption. Cost: the encrypted text is 2 letters longer per space."],
     ["<b>Weak key:</b> a short or common key can be guessed (dictionary attack).", false,
      "Use a long, random key."],
     ["<b>Digraph frequency analysis:</b> only 600 possible pairs, common pairs (TH, HE) still appear.", false,
@@ -130,7 +133,7 @@ function readParams(algo, p) {
       return v;
     });
   }
-  return { key: $(p + "-pkey").value, pad: $(p + "-ppad").value, removePad: p === "d" && $(p + "-prem").checked };
+  return { key: $(p + "-pkey").value, removePad: p === "d" && $(p + "-prem").checked };
 }
 
 function randomHillKey(p) {
@@ -140,7 +143,7 @@ function randomHillKey(p) {
 }
 
 function tableHtml(table, key) {
-  let h = '<p class="petit" style="margin-bottom:0">Playfair 5×5 table (key letters in grey):</p><table class="grille">';
+  let h = '<table class="grille">';
   for (let r = 0; r < 5; r++) {
     h += "<tr>";
     for (let c = 0; c < 5; c++) { const l = table[r * 5 + c]; h += "<td" + (key.indexOf(l) !== -1 ? ' class="k"' : "") + ">" + l + "</td>"; }
@@ -173,10 +176,10 @@ function run(p, mode) {
     } else if (algo === "hill") {
       history.key = "[" + params[0] + ", " + params[1] + "; " + params[2] + ", " + params[3] + "]";
     } else {
-      history.key = r.key + " (padding: " + r.pad + ")";
+      history.key = r.key;
     }
     addHistory(history);
-    info.textContent = (mode === "encrypt" ? "Encrypted" : "Decrypted") + " with " + algo.charAt(0).toUpperCase() + algo.slice(1) + "." + (r.info ? "\n" + r.info : "");
+    info.textContent = r.info;
     if (algo === "playfair") extra.innerHTML = tableHtml(r.table, r.key);
     if (p === "e") $("e-send").style.display = "flex";
   } catch (e) {

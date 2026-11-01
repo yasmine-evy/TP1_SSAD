@@ -1,52 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Encryption and Security Framework</title>
-<link rel="stylesheet" href="style.css">
-<link rel="icon" type="image/png" sizes="500x500" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Encryption & Security</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="./Images/logo.png">
 </head>
 <body>
-<header>
-  <div class="hero">
-    <div class="title-row">
-      <img class="title-logo" src="logo.png" alt="Site logo">
-      <h1>Encryption and Security Framework</h1>
-    </div>
-    <p class="intro">
-      This site gathers the different parts of our practical work: the encryption and decryption
-      algorithms (Caesar, Hill and Playfair), the three types of passwords, and the verification of the integrity and authenticity of a
-      message. Choose a tab to start.
-    </p>
-  </div>
-</header>
+    <header>
+        <div class="hero">
+            <div class="title-row">
+                <img class="title-logo" src="./Images/logo.png" alt="Site logo">
+                <h1>Encryption and Security Framework</h1>
+            </div>
+            <p class="intro"> This site gathers the different parts of our practical work: the encryption and decryption
+            algorithms (Caesar, Hill and Playfair), the three types of passwords, and the verification of the integrity of a
+            message.<br>
+            Choose a tab to start.
+            </p>
+        </div>
+    </header>
 
-<main>
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Encryption</button>
-    <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Password</button>
-    <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Integrity</button>
-  </div>
+    <main>
+        <!-- the 3 main tabs -->
+        <div class="tabs" role="tablist">
+            <button class="tab" role="tab" id="tab-chiffrement" aria-controls="panel-chiffrement" aria-selected="true">Encryption</button>
+            <button class="tab" role="tab" id="tab-password" aria-controls="panel-password" aria-selected="false">Password</button>
+            <button class="tab" role="tab" id="tab-integrite" aria-controls="panel-integrite" aria-selected="false">Integrity</button>
+        </div>
 
-  <!-- Encryption tab -->
-  <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
-    <a class="bar bar-link" href="chiffrement.html"><span class="bar-head">Encrypt / Decrypt a message (Caesar, Hill, Playfair) <span class="arrow">▶</span></span></a>
-  </section>
+        <!-- Encryption tab -->
+        <section class="panel active" id="panel-chiffrement" role="tabpanel" aria-labelledby="tab-chiffrement">
+            <a class="bar bar-link" href="./Encryption/chiffrement.html"><span class="bar-head">Encrypt & Decrypt a message<span class="arrow">▶</span></span></a>
+        </section>
 
-  <!-- Password tab -->
-  <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
-    <a class="bar bar-link" href="password.html"><span class="bar-head">Password types (generator and check) <span class="arrow">▶</span></span></a>
-  </section>
+        <!-- Password tab -->
+        <section class="panel" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+            <a class="bar bar-link" href="./Passwords/password.html"><span class="bar-head">Password Types & Attacks<span class="arrow">▶</span></span></a>
+        </section>
 
-  <!-- Integrity tab -->
-  <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
-    <a class="bar bar-link" href="integrite.html"><span class="bar-head">Integrity(Choose an algorithm) <span class="arrow">▶</span></span></a>
-  </section>
-</main>
+        <!-- Integrity tab -->
+        <section class="panel" id="panel-integrite" role="tabpanel" aria-labelledby="tab-integrite">
+            <a class="bar bar-link" href="./Integrity/integrite.html"><span class="bar-head">Integrity and authenticity check<span class="arrow">▶</span></span></a>
+        </section>
+    </main>
 
-<footer>TP SSAD · USTHB · 2026-2027</footer>
+    <footer>TP SSAD · USTHB · 2026-2027</footer>
 
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

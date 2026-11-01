@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Integrity</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="icon" type="image/png" href="../Images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="hero">
+            <a class="retour" href="../index.html">← Back</a><br>
+            <h1>Integrity</h1>
+            <p class="intro">Choose an algorithm (Caesar, Hill or Playfair), write a message, give the key, then encrypt or decrypt it. The algorithms are shared with the encryption page.</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="bloc" id="integriteG1">
+            <h2>Encrypt / Decrypt interface</h2>
+
+            <label for="i-algo">Algorithm</label>
+            <select id="i-algo" onchange="showParams()">
+                <option value="caesar">Caesar</option>
+                <option value="hill">Hill</option>
+                <option value="playfair">Playfair</option>
+            </select>
+
+            <label for="i-msg">Message</label>
+            <textarea id="i-msg" rows="3" placeholder="Write the message here">Hello World</textarea>
+            <div id="i-params"></div>
+
+            <div class="boutons">
+                <button type="button" class="principal" onclick="doEncrypt()">Encrypt</button>
+                <button type="button" onclick="doDecrypt()">Decrypt</button>
+            </div>
+
+            <div class="resultat" id="i-out" aria-live="polite"></div>
+            <p class="msg-info" id="i-info"></p>
+            <div class="boutons" id="i-use" hidden>
+                <button type="button" onclick="useResult()">Use the result as the message ↑</button>
+            </div>
+        </div>
+
+        <div class="bloc" id="integriteNext">
+            <h2>Integrity and authenticity check</h2>
+            <div class="slot" id="integrite-next"></div>
+        </div>
+    </main>
+
+    <footer>TP SSAD · USTHB · 2026-2027</footer>
+
+    <script src="../Encryption/ciphers.js"></script>
+    <script src="integrite.js"></script>
+</body>
+</html>

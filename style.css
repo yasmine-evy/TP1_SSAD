@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
-
 /* =====================================================
    Thème « Aurore » : sombre, reflets violet / cyan,
    cartes en verre dépoli
@@ -54,9 +52,23 @@ header {
   border-bottom: 1px solid var(--line);
   padding: 72px 20px 56px;
 }
-.hero { max-width: 760px; margin: 0 auto; }
+.hero { max-width: 720px; margin: 0 auto; }
 .title-row { display: flex; align-items: center; gap: 18px; }
 .title-logo { width: clamp(76px, 12vw, 112px); height: auto; flex: 0 0 auto; filter: drop-shadow(0 8px 22px rgba(139, 92, 246, .45)); }
+.title-row + .intro {
+  margin: 20px 0 0 calc(clamp(76px, 12vw, 112px) + 18px);
+  padding-left: 16px;
+  border-left: 3px solid var(--violet-soft);
+  text-align: left;
+}
+.page-heading h1 { display: block; margin: 0; }
+.page-heading .intro,
+.hero > h1 + .intro {
+  margin: 12px 0 0;
+  padding-left: 16px;
+  border-left: 3px solid var(--violet-soft);
+  text-align: left;
+}
 h1 {
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 800;
@@ -155,6 +167,7 @@ footer { text-align: center; color: var(--faint); font-size: .85rem; padding-bot
   .tab { padding: 9px 16px; }
   .title-row { gap: 12px; }
   .title-logo { width: 64px; }
+  .title-row + .intro { margin-left: 76px; }
 }
 
 /* Barres-liens (ouvrent une page dédiée) */
@@ -164,7 +177,7 @@ a.bar-link:hover .arrow { background: var(--grad); color: #fff; }
 
 /* Pages des algorithmes */
 .retour {
-  display: inline-block; margin-bottom: 18px; color: var(--muted);
+  display: inline-block; margin: 0 0 30px -16px; color: var(--muted);
   text-decoration: none; font-weight: 600; font-size: .92rem;
 }
 .retour:hover { color: var(--cyan); }
@@ -294,3 +307,34 @@ button.mini:hover { background: rgba(167, 139, 250, .12); color: #fff; }
 .conseil b { color: var(--warn); }
 details summary { cursor: pointer; color: var(--muted); }
 details summary:hover { color: var(--cyan); }
+
+.attack-type-buttons { flex-wrap: nowrap; }
+.attack-type-buttons button {
+  flex: 1 1 0; min-width: 0; padding: 9px 8px; font-size: 1rem; white-space: nowrap;
+}
+.boutons[hidden] { display: none; }
+
+/* ===== Password strength checker ===== */
+.pwc-section { margin-top: 18px; padding: 0; }
+.pwc-title { margin: 0 0 8px; font-size: 1.2rem; }
+.pwc-label { margin-top: 12px; }
+.pwc-input { display: block; width: 100%; }
+.pwc-strength { margin: 18px 0; }
+.pwc-level { margin: 0 0 8px; font-weight: 700; font-size: 1.05rem; }
+.pwc-level-idle { color: var(--muted); }
+.pwc-level-weak { color: #fda4af; }
+.pwc-level-medium { color: #fde68a; }
+.pwc-level-strong { color: #6ee7b7; }
+.pwc-track { width: 100%; height: 12px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+.pwc-bar { width: 0; height: 100%; border-radius: inherit; transition: width .25s ease, background-color .25s ease; }
+.pwc-bar-idle { background: var(--faint); }
+.pwc-bar-weak { background: #f43f5e; }
+.pwc-bar-medium { background: #f59e0b; }
+.pwc-bar-strong { background: #34d399; }
+.pwc-score { margin: 7px 0 0; color: var(--muted); font-size: .9rem; }
+.pwc-heading { margin: 20px 0 10px; font-size: 1rem; }
+.pwc-checklist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pwc-check { display: flex; align-items: flex-start; gap: 9px; line-height: 1.45; }
+.pwc-icon { flex: 0 0 1.2em; font-weight: 700; color: #fda4af; }
+.pwc-check-passed .pwc-icon { color: #6ee7b7; }
+.pwc-check-failed { color: var(--muted); }
