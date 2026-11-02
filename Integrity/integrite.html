@@ -29,8 +29,8 @@
             <h2>1. Encryption (Sender)</h2>
 
             <label for="i-msg">Message</label>
-            <textarea id="i-msg" rows="3" oninput="sanitizeMessage()">HelloWorld</textarea>
-            <p class="petit" id="i-msg-hint">Allowed characters: a–z, A–Z, 0–9, * and +. Other characters are removed.</p>
+            <textarea id="i-msg" rows="3" oninput="sanitizeMessage()">Hello World</textarea>
+            <p class="petit" id="i-msg-hint">Allowed characters: a–z, A–Z, 0–9, *, + and spaces. Other characters are removed.</p>
 
             <label for="i-algo">Algorithm</label>
             <select id="i-algo" onchange="showParams()">
@@ -57,7 +57,8 @@
             <p class="petit">The attacker sits on the channel between Side A and Side B. They intercept the encrypted packet (ciphertext|checksum|length|padding data) and randomly alter some characters of the ciphertext. The original checksum is left untouched, so Side B should detect the change.</p>
 
             <label for="i-attack-count">Number of characters to modify</label>
-            <input type="number" id="i-attack-count" min="1" max="10" value="2" onkeydown="blockNegativeKey(event)">
+            <input type="number" id="i-attack-count" min="1" step="1" value="2" onkeydown="blockNegativeKey(event)">
+            <div class="resultat erreur" id="i-attack-validation" aria-live="polite"></div>
 
             <div class="boutons">
                 <button type="button" class="principal" id="i-attack-button" onclick="simulateAttack()">Simulate attack (Modify the message)</button>
@@ -70,9 +71,10 @@
 
         <div class="bloc" id="integriteNext">
             <h2>Side B — Decrypt and verify integrity</h2>
-            <p class="petit">Recalculate the checksum from the received encrypted payload and compare it with the attached value before decrypting. Length and padding data help restore the original message accurately. Edit the ciphertext to test tamper detection. This simple checksum is not cryptographic authentication and can be altered or recomputed.</p>
+            <p class="petit">Recalculate the checksum from the received encrypted payload and compare it with the attached value before decrypting. Length and padding data help restore the original message accurately. Use the attacker simulation above to test tamper detection. This simple checksum is not cryptographic authentication and can be altered or recomputed.</p>
             <label for="i-received">Received ciphertext</label>
             <textarea id="i-received" rows="3" placeholder="ciphertext|checksum|length|padding data"></textarea>
+            <p class="petit">Only the encrypted message before the first "|" can be changed. Spaces are not allowed.</p>
             <div class="boutons">
                 <button type="button" class="principal" id="i-verify-button" onclick="doDecrypt()">Decrypt and verify</button>
             </div>

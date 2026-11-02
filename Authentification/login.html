@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in – Encryption and Security Framework</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="icon" type="image/png" sizes="500x500" href="../Images/logo.png">
+</head>
+<body>
+<header>
+  <div class="hero">
+    <div class="title-row">
+      <img class="title-logo" src="../Images/logo.png" alt="Site logo">
+      <h1>Encryption and Security Framework</h1>
+    </div>
+    <p class="intro">Log in or create an account to open the application.</p>
+  </div>
+</header>
+
+<main class="auth-main">
+  <div class="tabs" role="tablist" id="auth-tabs">
+    <button class="tab" role="tab" id="tab-login" aria-selected="true" data-view="login">Log in</button>
+    <button class="tab" role="tab" id="tab-signup" aria-selected="false" data-view="signup">Create an account</button>
+  </div>
+
+  <!-- ===== LOG IN ===== -->
+  <form class="bloc auth-view" id="view-login" novalidate autocomplete="on">
+    <h2>Log in</h2>
+    <label for="l-email">E-mail</label>
+    <input type="email" id="l-email" autocomplete="username" placeholder="name@mail.com">
+    <label for="l-pw">Password</label>
+    <input type="password" id="l-pw" autocomplete="current-password">
+    <div class="boutons">
+      <button type="submit" class="principal" id="l-btn">Log in</button>
+      <button type="button" class="linklike" data-go="forgot1">Forgot password?</button>
+    </div>
+    <div class="resultat" id="l-msg" aria-live="polite"></div>
+  </form>
+
+  <!-- ===== CREATE AN ACCOUNT ===== -->
+  <form class="bloc auth-view" id="view-signup" novalidate autocomplete="on" hidden>
+    <h2>Create an account</h2>
+    <label for="s-name">Name</label>
+    <input type="text" id="s-name" autocomplete="name" placeholder="Your name">
+    <label for="s-email">E-mail</label>
+    <input type="email" id="s-email" autocomplete="email" placeholder="name@mail.com">
+    <label for="s-pw">Password</label>
+    <input type="password" id="s-pw" autocomplete="new-password">
+    <p class="petit hint" id="s-rules">At least 8 characters, with at least one uppercase letter, one lowercase letter and one special character (example: + _ # ? ! @ $ %).</p>
+    <label for="s-pw2">Confirm the password</label>
+    <input type="password" id="s-pw2" autocomplete="new-password">
+    <div class="boutons">
+      <button type="submit" class="principal">Create my account</button>
+    </div>
+    <div class="resultat" id="s-msg" aria-live="polite"></div>
+  </form>
+
+  <!-- ===== FORGOT PASSWORD, step 1: e-mail ===== -->
+  <form class="bloc auth-view" id="view-forgot1" novalidate hidden>
+    <h2>Forgot your password?</h2>
+    <p class="petit">Type the e-mail of your account. We send you a 6-digit code to choose a new password.</p>
+    <label for="f-email">E-mail</label>
+    <input type="email" id="f-email" autocomplete="email" placeholder="name@mail.com">
+    <div class="boutons">
+      <button type="submit" class="principal">Send me the code</button>
+      <button type="button" class="linklike" data-go="login">← Back to log in</button>
+    </div>
+    <div class="resultat" id="f-msg" aria-live="polite"></div>
+  </form>
+
+  <!-- ===== FORGOT PASSWORD, step 2: code + new password ===== -->
+  <form class="bloc auth-view" id="view-forgot2" novalidate hidden>
+    <h2>Choose a new password</h2>
+    <p class="petit" id="f2-text"></p>
+
+    <div class="mailbox" id="mailbox" aria-live="polite"></div>
+
+    <label for="r-code">Code received</label>
+    <input type="text" id="r-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 digits">
+    <label for="r-pw">New password</label>
+    <input type="password" id="r-pw" autocomplete="new-password">
+    <p class="petit hint">At least 8 characters, with at least one uppercase letter, one lowercase letter and one special character (example: + _ # ? ! @ $ %).</p>
+    <label for="r-pw2">Confirm the new password</label>
+    <input type="password" id="r-pw2" autocomplete="new-password">
+    <div class="boutons">
+      <button type="submit" class="principal">Change my password</button>
+      <button type="button" class="linklike" data-go="forgot1">← Use another e-mail</button>
+    </div>
+    <div class="resultat" id="r-msg" aria-live="polite"></div>
+  </form>
+</main>
+
+<footer>TP SSAD · USTHB · 2026-2027</footer>
+
+<script src="emailjs-config.js"></script>
+<script src="auth.js"></script>
+<script src="login.js"></script>
+</body>
+</html>

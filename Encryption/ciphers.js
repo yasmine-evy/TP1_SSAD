@@ -264,7 +264,7 @@ function runPlayfairWithAlphabet(raw, p, mode, alphabet) {
     while (i < text.length) {
       const first = text[i], second = text[i + 1];
       if (!second || second === first) {
-        const filler = alphabet[0] === first ? alphabet[1] : alphabet[0];
+        const filler = playfairFiller(first);
         output += playfairPairWithAlphabet(first + filler, table, 1, size);
         i++;
       } else {
@@ -281,7 +281,7 @@ function runPlayfairWithAlphabet(raw, p, mode, alphabet) {
   let output = "";
   pairs.forEach(function (pair, i) {
     const first = pair[0], second = pair[1];
-    const filler = alphabet[0] === first ? alphabet[1] : alphabet[0];
+    const filler = playfairFiller(first);
     output += first;
     if (!(p.removePad !== false && second === filler && (i === pairs.length - 1 || pairs[i + 1][0] === first)))
       output += second;

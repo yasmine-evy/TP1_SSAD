@@ -4,6 +4,48 @@ const $ = function (id) { return document.getElementById(id); };
 const CIPHER_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+*";
 let senderMessageLength = 0;
 let senderPaddingMap = "-";
+let lastReceivedEnvelope = "";
+
+function setReceivedEnvelope(envelope) {
+  lastReceivedEnvelope = envelope;
+  $("i-received").value = envelope;
+}
+
+function isReceivedEditAllowed(field) {
+  const separator = lastReceivedEnvelope.indexOf("|");
+  return separator !== -1 && field.selectionStart <= separator && field.selectionEnd <= separator;
+}
+
+function restrictReceivedEdit(event) {
+  const field = $("i-received");
+  if (!isReceivedEditAllowed(field) ||
+      (event.data !== null && /[\s|]/.test(event.data)) ||
+      (event.inputType === "deleteContentForward" &&
+        field.selectionStart === lastReceivedEnvelope.indexOf("|") &&
+        field.selectionEnd === field.selectionStart)) {
+    event.preventDefault();
+  }
+}
+
+function restrictReceivedPaste(event) {
+  const text = event.clipboardData.getData("text");
+  if (!isReceivedEditAllowed($("i-received")) || /[\s|]/.test(text)) {
+    event.preventDefault();
+  }
+}
+
+function retainValidReceivedEdit() {
+  const field = $("i-received");
+  const separator = lastReceivedEnvelope.indexOf("|");
+  const envelope = field.value;
+  if (separator === -1 || envelope.indexOf("|") !== separator ||
+      envelope.slice(separator) !== lastReceivedEnvelope.slice(separator) ||
+      /\s/.test(envelope.slice(0, separator))) {
+    field.value = lastReceivedEnvelope;
+    return;
+  }
+  lastReceivedEnvelope = envelope;
+}
 
 // Key fields of the chosen algorithm
 function paramsHtml(algo) {
@@ -48,6 +90,8 @@ function showParams() {
   $("i-integrity-result").textContent = "";
   $("i-integrity-result").className = "resultat";
   $("i-use").style.display = "none";
+  $("i-attack-count").removeAttribute("max");
+  $("i-attack-validation").textContent = "";
   resetAttackerView();
 }
 
@@ -87,7 +131,7 @@ function randomHillKey() {
 
 function sanitizeMessage() {
   const field = $("i-msg");
-  field.value = field.value.replace(/[^A-Za-z0-9*+]/g, "");
+  field.value = field.value.replace(/[^A-Za-z0-9*+ ]/g, "");
 }
 
 function calculateControlValue(value) {
@@ -114,15 +158,13 @@ function makePlayfairPaddingMap(message) {
 
 function recoverPlayfairMessage(rawDecrypted, expectedLength, key, ciphertext, paddingMap) {
   const pairs = rawDecrypted.match(/../g) || [];
-  const firstAlphabetCharacter = CIPHER_ALPHABET[0];
-  const secondAlphabetCharacter = CIPHER_ALPHABET[1];
   if (pairs.length !== paddingMap.length)
     throw new Error("The Playfair padding data is malformed.");
   let message = "";
   for (let pairIndex = 0; pairIndex < pairs.length; pairIndex++) {
     const pair = pairs[pairIndex];
     const first = pair[0], second = pair[1];
-    const filler = first === firstAlphabetCharacter ? secondAlphabetCharacter : firstAlphabetCharacter;
+    const filler = playfairFiller(first);
     const nextPairStartsWithFirst = pairIndex === pairs.length - 1 || pairs[pairIndex + 1][0] === first;
     if (paddingMap[pairIndex] === "1") {
       if (second !== filler || !nextPairStartsWithFirst)
@@ -145,6 +187,16 @@ function showModified(message) {
   $("i-integrity-result").className = "resultat erreur";
 }
 
+function changedCiphertextCount(original, received) {
+  const originalCharacters = Array.from(original);
+  const receivedCharacters = Array.from(received);
+  let changed = 0;
+  for (let index = 0; index < Math.max(originalCharacters.length, receivedCharacters.length); index++) {
+    if (originalCharacters[index] !== receivedCharacters[index]) changed++;
+  }
+  return changed;
+}
+
 function doEncrypt() {
   const button = $("i-encrypt-button");
   const out = $("i-out");
@@ -159,19 +211,28 @@ function doEncrypt() {
   senderMessageLength = 0;
   senderPaddingMap = "-";
   $("i-use").style.display = "none";
+  $("i-attack-count").removeAttribute("max");
   button.disabled = true;
   try {
-    if (!message || Array.from(message).some(function (character) { return CIPHER_ALPHABET.indexOf(character) === -1; }))
-      throw new Error("Message must contain one or more characters from a-z, A-Z, 0-9, + or *.");
-    const r = runCipher(algo, message, readParams(algo), "encrypt", CIPHER_ALPHABET);
+    if (!message || Array.from(message).some(function (character) {
+      return character !== " " && CIPHER_ALPHABET.indexOf(character) === -1;
+    }))
+      throw new Error("Message must contain characters from a-z, A-Z, 0-9, *, + or spaces.");
+    const cipherMessage = encodeSpaces(message);
+    const r = runCipher(algo, cipherMessage, readParams(algo), "encrypt", CIPHER_ALPHABET);
     out.textContent = r.text;
-    senderMessageLength = message.length;
-    senderPaddingMap = algo === "playfair" ? makePlayfairPaddingMap(message) : "-";
+    senderMessageLength = cipherMessage.length;
+    senderPaddingMap = algo === "playfair" ? makePlayfairPaddingMap(cipherMessage) : "-";
+    $("i-attack-count").max = String(r.text.length);
+    $("i-attack-validation").textContent = "";
+    resetAttackerView();
     const checksumInput = r.text + "|" + senderMessageLength + "|" + senderPaddingMap;
     const controlValue = calculateControlValue(checksumInput);
     const name = algo.charAt(0).toUpperCase() + algo.slice(1);
     info.textContent = "Cipher: " + name + "\nChecksum of encrypted payload: " + controlValue +
-      "\nSend as: " + r.text + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap + (r.info ? "\n" + r.info : "");
+      "\nSend as: " + r.text + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap +
+      (message.indexOf(" ") !== -1 ? "\n" + (message.match(/ /g) || []).length + " space(s) hidden in the encrypted text (restored at decryption)." : "") +
+      (r.info ? "\n" + r.info : "");
     if (algo === "playfair") extra.innerHTML = tableHtml(r.table, r.key);
     $("i-use").style.display = "flex";
   } catch (e) {
@@ -195,6 +256,11 @@ function doDecrypt() {
   button.disabled = true;
 
   try {
+    if (!envelope.trim()) {
+      result.textContent = "No ciphertext received. Send or simulate an encrypted message before verifying.";
+      result.className = "resultat erreur";
+      return;
+    }
     const parts = envelope.split("|");
     if (parts.length !== 4 || !parts[0]) throw new Error("The received value must contain encrypted text, checksum, original length, and padding data separated by '|'.");
     const ciphertext = parts[0];
@@ -203,16 +269,24 @@ function doDecrypt() {
     const paddingMap = parts[3];
     if (!/^[0-9a-f]{4}$/i.test(receivedControlValue))
       throw new Error("The received checksum value is malformed.");
-    if (!/^[1-9]\d*$/.test(receivedLength) || !Number.isSafeInteger(Number(receivedLength)) || Number(receivedLength) > ciphertext.length)
+    if (!/^[1-9]\d*$/.test(receivedLength) || !Number.isSafeInteger(Number(receivedLength)))
       throw new Error("The received original message length is invalid.");
     const originalLength = Number(receivedLength);
+    if (Number(receivedLength) > ciphertext.length)
+      throw new Error("The received original message length is invalid.");
     if (algo === "playfair" ? !/^[01]+$/.test(paddingMap) || paddingMap.length !== ciphertext.length / 2 : paddingMap !== "-")
       throw new Error("The received padding data is invalid.");
     const calculatedControlValue = calculateControlValue(ciphertext + "|" + receivedLength + "|" + paddingMap);
     if (calculatedControlValue.toLowerCase() !== receivedControlValue.toLowerCase()) {
+      const originalCiphertext = $("i-out").textContent;
+      const comparedLength = Math.max(Array.from(originalCiphertext).length, Array.from(ciphertext).length);
+      const changedPercentage = comparedLength
+        ? "\n• Modified characters as a percentage of the encrypted message: " +
+          (changedCiphertextCount(originalCiphertext, ciphertext) / comparedLength * 100).toFixed(1) + "%"
+        : "";
       showModified(
         "Message modified , Le checksum ne correspond pas." +
-
+        changedPercentage +
         "\n• Checksum reçu (original) : " + receivedControlValue +
         "\n• Checksum calculé : " + calculatedControlValue
       );
@@ -232,7 +306,7 @@ function doDecrypt() {
       if (message.length !== originalLength)
         throw new Error("The decrypted message does not match its original length.");
     }
-    output.textContent = message;
+    output.textContent = decodeSpaces(message);
     result.textContent = "Message intact — the checksum of the encrypted message matches.";
     result.className = "resultat doux";
   } catch (error) {
@@ -251,7 +325,7 @@ function buildEnvelope() {
 }
 
 function sendToReceiver() {
-  $("i-received").value = buildEnvelope();
+  setReceivedEnvelope(buildEnvelope());
   $("i-received").focus();
 }
 
@@ -263,6 +337,19 @@ function resetAttackerView() {
     box.className = "resultat";
   });
   $("i-attack-info").textContent = "";
+}
+
+function validateAttackCount(ciphertextLength) {
+  const field = $("i-attack-count");
+  const error = $("i-attack-validation");
+  const raw = field.value.trim();
+  const requested = Number(raw);
+  const invalid = !raw || !Number.isSafeInteger(requested) || requested < 1 ||
+    requested > ciphertextLength;
+  error.textContent = invalid
+    ? "Enter a number between 1 and " + ciphertextLength + "."
+    : "";
+  return !invalid;
 }
 
 function escapeHtml(text) {
@@ -313,13 +400,12 @@ function highlightHtml(text, positions) {
 function simulateAttack() {
   const button = $("i-attack-button");
   resetAttackerView();
+  $("i-attack-validation").textContent = "";
   button.disabled = true;
   try {
-    const raw = $("i-attack-count").value.trim(), requested = Number(raw);
-    if (!raw || !Number.isSafeInteger(requested) || requested < 1)
-      throw new Error("The number of characters to modify must be an integer of at least 1.");
-
     const packet = interceptCiphertext();
+    if (!validateAttackCount(packet.ciphertext.length)) return;
+    const raw = $("i-attack-count").value.trim(), requested = Number(raw);
     let tampered, tries = 0;
     do {
       tampered = modifyCiphertext(packet.ciphertext, requested);
@@ -335,7 +421,7 @@ function simulateAttack() {
       "\nChecksum left unchanged: " + packet.checksum +
       "\nThe modified packet was delivered to Side B — click \"Decrypt and verify\" to check it.";
 
-    $("i-received").value = [tampered.text, packet.checksum, packet.length, packet.padding].join("|");
+    setReceivedEnvelope([tampered.text, packet.checksum, packet.length, packet.padding].join("|"));
   } catch (e) {
     $("i-tampered").className = "resultat erreur";
     $("i-tampered").textContent = e.message;
@@ -343,4 +429,8 @@ function simulateAttack() {
     button.disabled = false;
   }
 }
+
+$("i-received").addEventListener("beforeinput", restrictReceivedEdit);
+$("i-received").addEventListener("paste", restrictReceivedPaste);
+$("i-received").addEventListener("input", retainValidReceivedEdit);
 showParams();
