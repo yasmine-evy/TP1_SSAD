@@ -48,6 +48,7 @@ function showParams() {
   $("i-integrity-result").textContent = "";
   $("i-integrity-result").className = "resultat";
   $("i-use").style.display = "none";
+  resetAttackerView();
 }
 
 function readParams(algo) {
@@ -209,7 +210,12 @@ function doDecrypt() {
       throw new Error("The received padding data is invalid.");
     const calculatedControlValue = calculateControlValue(ciphertext + "|" + receivedLength + "|" + paddingMap);
     if (calculatedControlValue.toLowerCase() !== receivedControlValue.toLowerCase()) {
-      showModified("Message modified — the checksum of the encrypted message does not match.");
+      showModified(
+        "Message modified , Le checksum ne correspond pas." +
+
+        "\n• Checksum reçu (original) : " + receivedControlValue +
+        "\n• Checksum calculé : " + calculatedControlValue
+      );
       return;
     }
 
@@ -236,12 +242,105 @@ function doDecrypt() {
   }
 }
 
-function sendToReceiver() {
+// Builds the packet exactly as Side A sends it: ciphertext|checksum|length|padding data
+function buildEnvelope() {
   const ciphertext = $("i-out").textContent;
   const checksumInput = ciphertext + "|" + senderMessageLength + "|" + senderPaddingMap;
   const controlValue = calculateControlValue(checksumInput);
-  $("i-received").value = ciphertext + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap;
+  return ciphertext + "|" + controlValue + "|" + senderMessageLength + "|" + senderPaddingMap;
+}
+
+function sendToReceiver() {
+  $("i-received").value = buildEnvelope();
   $("i-received").focus();
 }
 
+// ===== ATTACKER: intercept the ciphertext and alter some of its characters =====
+
+function resetAttackerView() {
+  [$("i-intercepted"), $("i-tampered")].forEach(function (box) {
+    box.innerHTML = "";
+    box.className = "resultat";
+  });
+  $("i-attack-info").textContent = "";
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// 1. Intercept: the attacker reads the packet that Side A puts on the channel.
+//    Returns the 4 fields of the packet, or throws if nothing has been sent yet.
+function interceptCiphertext() {
+  const ciphertext = $("i-out").textContent;
+  const sent = $("i-use").style.display !== "none" && ciphertext && senderMessageLength > 0;
+  if (!sent)
+    throw new Error("Nothing to intercept: encrypt a message on Side A first.");
+  const parts = buildEnvelope().split("|");
+  return { ciphertext: parts[0], checksum: parts[1], length: parts[2], padding: parts[3] };
+}
+
+// 2. Alter: replace `count` distinct random characters of the ciphertext by a different
+//    character of the cipher alphabet (same length, so the packet still looks well-formed).
+//    Returns the modified text and the list of altered positions.
+function modifyCiphertext(ciphertext, count) {
+  const chars = Array.from(ciphertext);
+  const total = Math.min(count, chars.length);
+  const positions = [];
+  while (positions.length < total) {
+    const index = Math.floor(Math.random() * chars.length);
+    if (positions.indexOf(index) === -1) positions.push(index);
+  }
+  positions.sort(function (a, b) { return a - b; });
+  positions.forEach(function (index) {
+    let replacement;
+    do { replacement = CIPHER_ALPHABET[Math.floor(Math.random() * CIPHER_ALPHABET.length)]; }
+    while (replacement === chars[index]);
+    chars[index] = replacement;
+  });
+  return { text: chars.join(""), positions: positions };
+}
+
+// Shows a ciphertext, highlighting the altered positions
+function highlightHtml(text, positions) {
+  return Array.from(text).map(function (character, index) {
+    const safe = escapeHtml(character);
+    return positions.indexOf(index) !== -1 ? '<span class="tampered">' + safe + "</span>" : safe;
+  }).join("");
+}
+
+// 3. Button handler: intercept, alter, then deliver the tampered packet to Side B.
+function simulateAttack() {
+  const button = $("i-attack-button");
+  resetAttackerView();
+  button.disabled = true;
+  try {
+    const raw = $("i-attack-count").value.trim(), requested = Number(raw);
+    if (!raw || !Number.isSafeInteger(requested) || requested < 1)
+      throw new Error("The number of characters to modify must be an integer of at least 1.");
+
+    const packet = interceptCiphertext();
+    let tampered, tries = 0;
+    do {
+      tampered = modifyCiphertext(packet.ciphertext, requested);
+      tries++;
+    } while (tries < 20 && calculateControlValue(tampered.text + "|" + packet.length + "|" + packet.padding) === packet.checksum);
+
+    $("i-intercepted").innerHTML = '<div class="petit">Intercepted ciphertext</div><div class="packet">' + escapeHtml(packet.ciphertext) + "</div>";
+    $("i-tampered").innerHTML = '<div class="petit">Modified ciphertext (altered characters underlined)</div><div class="packet">' +
+      highlightHtml(tampered.text, tampered.positions) + "</div>";
+    $("i-tampered").className = "resultat erreur";
+    $("i-attack-info").textContent = "Characters modified: " + tampered.positions.length +
+      " (positions " + tampered.positions.map(function (p) { return p + 1; }).join(", ") + ")" +
+      "\nChecksum left unchanged: " + packet.checksum +
+      "\nThe modified packet was delivered to Side B — click \"Decrypt and verify\" to check it.";
+
+    $("i-received").value = [tampered.text, packet.checksum, packet.length, packet.padding].join("|");
+  } catch (e) {
+    $("i-tampered").className = "resultat erreur";
+    $("i-tampered").textContent = e.message;
+  } finally {
+    button.disabled = false;
+  }
+}
 showParams();
